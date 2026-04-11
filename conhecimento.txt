@@ -1,0 +1,53 @@
+questão
+
+1. Média aritmética de dois números
+2. Número par ou ímpar
+3. Maior de três números
+4. Contagem de 1 até N
+
+
+
+Resposta aluno rodrigo:
+
+Resposta 1 -
+
+a = int(input("Digite o primeiro número: "))
+b = int(input("Digite o segundo número: "))
+// c = int(input("Digite o terceiro número: "))
+
+maior = a
+
+if b > maior:
+    maior = b
+if c > maior:
+    maior = c
+
+print("Maior número:", maior)
+
+
+Resposta 2 -
+n = int(input("Digite um número: "))
+
+if n % 2 == 0:
+    print("Par")
+else:
+    print("Ímpar")
+
+
+
+Resposta 3 -
+a = int(input("Digite o primeiro número: "))
+b = int(input("Digite o segundo número: "))
+c = int(input("Digite o terceiro número: "))
+
+maior = a
+
+if b > maior:
+    maior = b
+if c > maior:
+    maior = c
+Pergunta:
+<pergunta>
+print("Maior número:", maior)
+
+
