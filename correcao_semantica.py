@@ -32,7 +32,6 @@ Recomendação:
 from __future__ import annotations
 
 import ast
-import dataclasses
 import difflib
 import json
 import os
@@ -43,7 +42,6 @@ import tempfile
 import textwrap
 import traceback
 import unicodedata
-import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -129,6 +127,7 @@ def normalizar_tipo(tipo: str) -> str:
         "modificacao": "modificacao",
         "modificar": "modificacao",
         "alteracao": "modificacao",
+        "alterar": "modificacao",
         "previsao": "previsao",
         "prever": "previsao",
     }
@@ -185,7 +184,11 @@ def extrair_codigo(texto: str) -> str:
     if not texto:
         return ""
 
-    blocos = re.findall(r"```(?:python|py|c|cpp|java|javascript|txt|text)?\s*\n(.*?)```", texto, flags=re.S | re.I)
+    blocos = re.findall(
+        r"```(?:python|py|c|cpp|java|javascript|txt|text)?\s*\n(.*?)```",
+        texto,
+        flags=re.S | re.I,
+    )
     if blocos:
         return "\n\n".join(bloco.strip() for bloco in blocos if bloco.strip())
 
@@ -223,6 +226,26 @@ def extrair_json(texto: str) -> Optional[Any]:
             continue
 
     return None
+
+
+def exige_saida_no_enunciado(texto: str) -> bool:
+    """
+    Detecta se o enunciado realmente pede saída na tela / retorno.
+    Isso evita penalizar questões que só pedem modificação estrutural do código.
+    """
+    t = sem_acentos((texto or "").lower())
+    padroes = [
+        r"\bprint(?:e|ar|e)?\b",
+        r"\bmostre\b",
+        r"\bimprima\b",
+        r"\bexiba\b",
+        r"\bsaida\b",
+        r"\bretorne\b",
+        r"\breturn\b",
+        r"\bdeve retornar\b",
+        r"\bmostrar o resultado\b",
+    ]
+    return any(re.search(p, t) for p in padroes)
 
 
 # =========================
@@ -306,11 +329,13 @@ def parse_tests_field(texto: str) -> List[Dict[str, str]]:
                 testes = []
                 for item in obj:
                     if isinstance(item, dict):
-                        testes.append({
-                            "entrada": str(item.get("entrada", item.get("input", ""))),
-                            "saida": str(item.get("saida", item.get("output", ""))),
-                            "obs": str(item.get("obs", item.get("descricao", ""))),
-                        })
+                        testes.append(
+                            {
+                                "entrada": str(item.get("entrada", item.get("input", ""))),
+                                "saida": str(item.get("saida", item.get("output", ""))),
+                                "obs": str(item.get("obs", item.get("descricao", ""))),
+                            }
+                        )
                 return [t for t in testes if t["entrada"] or t["saida"]]
         except Exception:
             pass
@@ -323,24 +348,41 @@ def parse_tests_field(texto: str) -> List[Dict[str, str]]:
 
         if "=>" in linha:
             esquerda, direita = linha.split("=>", 1)
-            testes.append({
-                "entrada": esquerda.strip(),
-                "saida": direita.strip(),
-                "obs": "",
-            })
+            testes.append(
+                {
+                    "entrada": esquerda.strip(),
+                    "saida": direita.strip(),
+                    "obs": "",
+                }
+            )
         elif "|" in linha:
             esquerda, direita = linha.split("|", 1)
-            testes.append({
-                "entrada": esquerda.strip(),
-                "saida": direita.strip(),
-                "obs": "",
-            })
+            testes.append(
+                {
+                    "entrada": esquerda.strip(),
+                    "saida": direita.strip(),
+                    "obs": "",
+                }
+            )
 
     return testes
 
 
 def inferir_tipo(texto: str) -> str:
     t = sem_acentos((texto or "").lower())
+
+    # Detecta rótulos explícitos no texto, inclusive em formatos como:
+    # [MODIFICACAO], [CORRECAO], [JUSTIFICATIVA], [DESCRITIVA], [PREVISAO]
+    if re.search(r"\[\s*(modificacao|alteracao)\s*\]", t):
+        return "modificacao"
+    if re.search(r"\[\s*(correcao|corrigir|corrija|conserte|erro)\s*\]", t):
+        return "correcao"
+    if re.search(r"\[\s*(previsao|prever)\s*\]", t):
+        return "previsao"
+    if re.search(r"\[\s*(justificativa|justificar|explique)\s*\]", t):
+        return "justificativa"
+    if re.search(r"\[\s*(descritiva|descrever)\s*\]", t):
+        return "descritiva"
 
     if any(p in t for p in [
         "qual sera a saida",
@@ -349,6 +391,7 @@ def inferir_tipo(texto: str) -> str:
         "preveja a saida",
         "previsao",
         "resultado da execucao",
+        "saida do programa",
     ]):
         return "previsao"
 
@@ -359,6 +402,7 @@ def inferir_tipo(texto: str) -> str:
         "erro",
         "bug",
         "falha no codigo",
+        "correcao",
     ]):
         return "correcao"
 
@@ -371,6 +415,9 @@ def inferir_tipo(texto: str) -> str:
         "reescreva",
         "adicione",
         "incluir",
+        "remova",
+        "modificacao",
+        "alteracao",
     ]):
         return "modificacao"
 
@@ -382,7 +429,15 @@ def inferir_tipo(texto: str) -> str:
     ]):
         return "justificativa"
 
-    return "descritiva"
+    if any(p in t for p in [
+        "descreva",
+        "descritiva",
+        "resuma",
+        "explique",
+    ]):
+        return "descritiva"
+
+    return ""
 
 
 def parse_block(block: str, idx: int) -> Questao:
@@ -402,7 +457,7 @@ def parse_block(block: str, idx: int) -> Questao:
         buffer = []
 
     for linha in block.splitlines():
-        m = re.match(r"^\s*([A-Za-zÀ-ÿ0-9 _/()\-]{2,60})\s*:\s*(.*)$", linha)
+        m = re.match(r"^\s*([A-Za-zÀ-ÿ0-9 _/()\-]{2,80})\s*:\s*(.*)$", linha)
         if m:
             label = normalizar_label(m.group(1))
             if label in ALIASES_CAMPOS:
@@ -435,10 +490,20 @@ def parse_block(block: str, idx: int) -> Questao:
     saida = normalizar_texto(data.get("saida", ""))
     testes = parse_tests_field(data.get("testes", ""))
 
-    extras = {k: v for k, v in data.items() if k not in {
-        "tipo", "enunciado", "resposta_aluno", "resposta_referencia",
-        "codigo", "entrada", "saida", "testes"
-    }}
+    extras = {
+        k: v
+        for k, v in data.items()
+        if k not in {
+            "tipo",
+            "enunciado",
+            "resposta_aluno",
+            "resposta_referencia",
+            "codigo",
+            "entrada",
+            "saida",
+            "testes",
+        }
+    }
 
     return Questao(
         idx=idx,
@@ -477,19 +542,41 @@ def carregar_questoes(path: Path) -> List[Questao]:
 
                 q = Questao(
                     idx=int(item.get("id", i)),
-                    tipo=normalizar_tipo(str(item.get("tipo", ""))) or inferir_tipo(str(item.get("enunciado", item.get("pergunta", "")))),
+                    tipo=normalizar_tipo(str(item.get("tipo", "")))
+                    or inferir_tipo(str(item.get("enunciado", item.get("pergunta", "")))),
                     enunciado=normalizar_texto(str(item.get("enunciado", item.get("pergunta", "")))),
                     resposta_aluno=normalizar_texto(str(item.get("resposta_aluno", item.get("resposta", "")))),
                     resposta_referencia=normalizar_texto(str(item.get("resposta_referencia", item.get("gabarito", "")))),
                     codigo=normalizar_texto(str(item.get("codigo", item.get("programa", "")))),
                     entrada=normalizar_texto(str(item.get("entrada", item.get("input", "")))),
                     saida=normalizar_texto(str(item.get("saida", item.get("output", "")))),
-                    testes=parse_tests_field(json.dumps(item.get("testes", []), ensure_ascii=False) if item.get("testes") is not None else ""),
-                    extras={k: v for k, v in item.items() if k not in {
-                        "id", "tipo", "enunciado", "pergunta", "resposta_aluno", "resposta",
-                        "resposta_referencia", "gabarito", "codigo", "programa",
-                        "entrada", "input", "saida", "output", "testes"
-                    }},
+                    testes=parse_tests_field(
+                        json.dumps(item.get("testes", []), ensure_ascii=False)
+                        if item.get("testes") is not None
+                        else ""
+                    ),
+                    extras={
+                        k: v
+                        for k, v in item.items()
+                        if k
+                        not in {
+                            "id",
+                            "tipo",
+                            "enunciado",
+                            "pergunta",
+                            "resposta_aluno",
+                            "resposta",
+                            "resposta_referencia",
+                            "gabarito",
+                            "codigo",
+                            "programa",
+                            "entrada",
+                            "input",
+                            "saida",
+                            "output",
+                            "testes",
+                        }
+                    },
                 )
                 if not q.codigo:
                     q.codigo = extrair_codigo(q.enunciado or q.resposta_aluno)
@@ -511,7 +598,11 @@ def carregar_questoes(path: Path) -> List[Questao]:
 # LLM
 # =========================
 
-def chamar_llm(messages: List[Dict[str, str]], temperature: float = 0.2, max_tokens: int = 1200) -> Optional[str]:
+def chamar_llm(
+    messages: List[Dict[str, str]],
+    temperature: float = 0.2,
+    max_tokens: int = 1200,
+) -> Optional[str]:
     if not USAR_LLM:
         return None
 
@@ -540,7 +631,11 @@ def chamar_llm(messages: List[Dict[str, str]], temperature: float = 0.2, max_tok
         return None
 
 
-def chamar_llm_json(messages: List[Dict[str, str]], temperature: float = 0.2, max_tokens: int = 1200) -> Optional[Any]:
+def chamar_llm_json(
+    messages: List[Dict[str, str]],
+    temperature: float = 0.2,
+    max_tokens: int = 1200,
+) -> Optional[Any]:
     texto = chamar_llm(messages, temperature=temperature, max_tokens=max_tokens)
     if texto is None:
         return None
@@ -626,11 +721,13 @@ def deduplicar_testes(testes: List[Dict[str, str]]) -> List[Dict[str, str]]:
         if chave in vistos:
             continue
         vistos.add(chave)
-        saida.append({
-            "entrada": entrada,
-            "saida": normalizar_texto(str(t.get("saida", ""))),
-            "obs": normalizar_texto(str(t.get("obs", ""))),
-        })
+        saida.append(
+            {
+                "entrada": entrada,
+                "saida": normalizar_texto(str(t.get("saida", ""))),
+                "obs": normalizar_texto(str(t.get("obs", ""))),
+            }
+        )
     return saida
 
 
@@ -684,7 +781,7 @@ Retorne APENAS JSON válido neste formato:
 Regras:
 - "entrada" deve ser exatamente o texto que o programa receberia no stdin
 - "saida" deve ser exatamente o texto que o programa deveria imprimir
-- use \n quando necessário
+- use \\n quando necessário
 - não escreva explicações fora do JSON
 """
 
@@ -703,11 +800,13 @@ Regras:
         if isinstance(bruto, list):
             for item in bruto:
                 if isinstance(item, dict):
-                    testes.append({
-                        "entrada": normalizar_texto(str(item.get("entrada", item.get("input", "")))),
-                        "saida": normalizar_texto(str(item.get("saida", item.get("output", "")))),
-                        "obs": normalizar_texto(str(item.get("obs", item.get("descricao", "")))),
-                    })
+                    testes.append(
+                        {
+                            "entrada": normalizar_texto(str(item.get("entrada", item.get("input", "")))),
+                            "saida": normalizar_texto(str(item.get("saida", item.get("output", "")))),
+                            "obs": normalizar_texto(str(item.get("obs", item.get("descricao", "")))),
+                        }
+                    )
 
     return deduplicar_testes(testes)[:quantidade]
 
@@ -717,13 +816,12 @@ def obter_testes(q: Questao) -> List[Dict[str, str]]:
     if len(testes) >= TESTES_ALVO:
         return testes[:TESTES_ALVO]
 
-    faltantes = TESTES_ALVO - len(testes)
-    if faltantes > 0:
+    if len(testes) < TESTES_ALVO:
         gerados = gerar_testes_com_llm(q, quantidade=TESTES_ALVO)
         testes.extend(gerados)
 
     testes = deduplicar_testes(testes)
-    return testes[:max(TESTES_ALVO, len(testes))]
+    return testes[: max(TESTES_ALVO, len(testes))]
 
 
 # =========================
@@ -780,12 +878,14 @@ def avaliar_previsao(q: Questao) -> Resultado:
             "Saída correta calculada a partir do código-base.",
             f"Similaridade com a resposta do aluno: {sim:.3f}",
         ],
-        testes_executados=[{
-            "entrada": entrada,
-            "saida_esperada": saida_correta,
-            "saida_obtida": execucao["stdout"],
-            "erro_execucao": execucao["erro_execucao"],
-        }],
+        testes_executados=[
+            {
+                "entrada": entrada,
+                "saida_esperada": saida_correta,
+                "saida_obtida": execucao["stdout"],
+                "erro_execucao": execucao["erro_execucao"],
+            }
+        ],
         saida_correta=saida_correta,
     )
 
@@ -817,10 +917,47 @@ def avaliar_texto_heuristico(q: Questao) -> Resultado:
         )
 
     stop = {
-        "a", "o", "e", "de", "do", "da", "dos", "das", "um", "uma", "uns", "umas",
-        "que", "para", "por", "com", "sem", "em", "no", "na", "nos", "nas",
-        "ao", "aos", "as", "os", "se", "nao", "não", "como", "porque", "porque",
-        "qual", "quais", "ser", "sera", "será", "foi", "sao", "são", "isso", "isto",
+        "a",
+        "o",
+        "e",
+        "de",
+        "do",
+        "da",
+        "dos",
+        "das",
+        "um",
+        "uma",
+        "uns",
+        "umas",
+        "que",
+        "para",
+        "por",
+        "com",
+        "sem",
+        "em",
+        "no",
+        "na",
+        "nos",
+        "nas",
+        "ao",
+        "aos",
+        "as",
+        "os",
+        "se",
+        "nao",
+        "não",
+        "como",
+        "porque",
+        "qual",
+        "quais",
+        "ser",
+        "sera",
+        "será",
+        "foi",
+        "sao",
+        "são",
+        "isso",
+        "isto",
     }
 
     tokens_enunciado = {t for t in tokens_enunciado if t not in stop and len(t) > 2}
@@ -877,6 +1014,7 @@ Regras:
 - considere correção conceitual, completude, clareza e objetividade
 - penalize fuga do tema
 - seja consistente com notas de 0 a 10
+- NÃO use nota apenas 0 ou 10 se houver margem de parcialidade
 - não invente informações que não estejam na resposta
 
 Retorne APENAS JSON válido com este formato:
@@ -891,7 +1029,6 @@ Retorne APENAS JSON válido com este formato:
 
 Use nota inteira ou decimal, mas sempre entre 0 e 10.
 """
-
     obj = chamar_llm_json(
         [
             {"role": "system", "content": "Você devolve JSON válido e faz correção de respostas textuais."},
@@ -982,7 +1119,6 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
         saida_obtida = normalizar_texto(execucao["stdout"])
         saida_esperada_norm = normalizar_texto(saida_esperada)
 
-        # comparação mais rígida para código, com leve tolerância em whitespace
         sim = comparar_textos(saida_obtida, saida_esperada_norm)
 
         ok = False
@@ -1001,18 +1137,20 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
         if ok:
             passou += 1
 
-        execucoes.append({
-            "teste": i,
-            "entrada": entrada,
-            "saida_esperada": saida_esperada_norm,
-            "saida_obtida": saida_obtida,
-            "obs": obs,
-            "ok": ok,
-            "motivo": motivo,
-            "stderr": normalizar_texto(execucao["stderr"]),
-            "returncode": execucao["returncode"],
-            "timeout": execucao["timeout"],
-        })
+        execucoes.append(
+            {
+                "teste": i,
+                "entrada": entrada,
+                "saida_esperada": saida_esperada_norm,
+                "saida_obtida": saida_obtida,
+                "obs": obs,
+                "ok": ok,
+                "motivo": motivo,
+                "stderr": normalizar_texto(execucao["stderr"]),
+                "returncode": execucao["returncode"],
+                "timeout": execucao["timeout"],
+            }
+        )
 
         detalhes.append(
             f"Teste {i}: {'PASSOU' if ok else 'FALHOU'} "
@@ -1046,6 +1184,10 @@ def avaliar_modificacao_com_llm(q: Questao, codigo_aluno: str) -> Resultado:
     Avalia modificação combinando:
     - testes
     - checagem de aderência ao enunciado via LLM
+
+    Importante:
+    - Se o enunciado NÃO pedir saída na tela nem retorno,
+      não penalize apenas por ausência de print/return.
     """
     testes = obter_testes(q)
     resultado_testes = avaliar_codigo_por_testes(q, codigo_aluno, testes)
@@ -1053,11 +1195,16 @@ def avaliar_modificacao_com_llm(q: Questao, codigo_aluno: str) -> Resultado:
     if not USAR_LLM:
         return resultado_testes
 
+    precisa_saida = exige_saida_no_enunciado(q.enunciado)
+
     prompt = f"""
 Você é um corretor rigoroso de questões de modificação de código.
 
 Enunciado:
 {q.enunciado}
+
+O enunciado pede saída/retorno explícito?
+{ "SIM" if precisa_saida else "NÃO" }
 
 Código original de referência/contexto:
 {q.codigo or "(não há)"}
@@ -1069,6 +1216,8 @@ Sua tarefa:
 - dizer se a modificação atende ao pedido do enunciado
 - identificar requisitos que foram cumpridos e os que faltaram
 - atribuir nota de 0 a 10
+- use nota decimal quando fizer sentido
+- se o enunciado NÃO pedir print/return, não penalize apenas por ausência de impressão
 
 Retorne APENAS JSON válido com este formato:
 
@@ -1086,7 +1235,6 @@ Regras:
 - seja coerente com o enunciado
 - não avalie estilo, foque na exigência pedida
 """
-
     obj = chamar_llm_json(
         [
             {"role": "system", "content": "Você corrige modificações de código e devolve JSON válido."},
@@ -1118,7 +1266,6 @@ Regras:
         # Combinação ponderada: testes têm mais peso
         nota_final = (0.7 * resultado_testes.nota) + (0.3 * max(0.0, min(10.0, nota_llm)))
 
-        status_final = resultado_testes.status
         if status_llm == "erro" and resultado_testes.status != "ok":
             status_final = "erro"
         elif resultado_testes.status == "ok" and status_llm == "ok":
@@ -1160,7 +1307,6 @@ def extrair_resposta_codigo(q: Questao) -> str:
 def corrigir_questao(q: Questao) -> Resultado:
     tipo = normalizar_tipo(q.tipo) or inferir_tipo(q.enunciado)
 
-    # fallback: se tipo não vier, tenta inferir pelo texto
     if not tipo:
         tipo = inferir_tipo(q.enunciado)
 
@@ -1230,20 +1376,20 @@ def formatar_resultado(res: Resultado, q: Questao) -> str:
                 linhas.append(f"  Obs: {t['obs']}")
             if t.get("entrada"):
                 linhas.append("  Entrada:")
-                linhas.append(textwrap.indent(normalizar_texto(str(t['entrada'])), "    "))
+                linhas.append(textwrap.indent(normalizar_texto(str(t["entrada"])), "    "))
             if t.get("saida_esperada") is not None:
                 linhas.append("  Saída esperada:")
-                linhas.append(textwrap.indent(normalizar_texto(str(t['saida_esperada'])), "    "))
+                linhas.append(textwrap.indent(normalizar_texto(str(t["saida_esperada"])), "    "))
             if t.get("saida_obtida") is not None:
                 linhas.append("  Saída obtida:")
-                linhas.append(textwrap.indent(normalizar_texto(str(t['saida_obtida'])), "    "))
+                linhas.append(textwrap.indent(normalizar_texto(str(t["saida_obtida"])), "    "))
             if t.get("motivo"):
                 linhas.append(f"  Motivo: {t['motivo']}")
             if t.get("timeout"):
                 linhas.append("  Timeout: sim")
             if t.get("stderr"):
                 linhas.append("  STDERR:")
-                linhas.append(textwrap.indent(normalizar_texto(str(t['stderr'])), "    "))
+                linhas.append(textwrap.indent(normalizar_texto(str(t["stderr"])), "    "))
 
     linhas.append("\n" + "=" * 72 + "\n")
     return "\n".join(linhas)
@@ -1288,14 +1434,16 @@ def main() -> int:
         try:
             resultados.append(corrigir_questao(q))
         except Exception as e:
-            resultados.append(Resultado(
-                idx=q.idx,
-                tipo=q.tipo or "desconhecido",
-                nota=0.0,
-                status="erro",
-                feedback=f"Erro interno ao corrigir a questão: {e}",
-                detalhes=[traceback.format_exc(limit=3)],
-            ))
+            resultados.append(
+                Resultado(
+                    idx=q.idx,
+                    tipo=q.tipo or "desconhecido",
+                    nota=0.0,
+                    status="erro",
+                    feedback=f"Erro interno ao corrigir a questão: {e}",
+                    detalhes=[traceback.format_exc(limit=3)],
+                )
+            )
 
     relatorio = gerar_relatorio(questoes, resultados)
 
