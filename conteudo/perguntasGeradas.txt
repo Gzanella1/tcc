@@ -1,0 +1,81 @@
+========== EXERCÍCIO 1 - sobre a resposta da questão 1 ==========
+
+Questão: Média aritmética de dois números
+
+1 - [MODIFICACAO] Remova o comentário da linha que define a variável 'c' e atualize o código para calcular o maior entre os três números.
+
+Resposta:
+a = float(input("Digite o primeiro número: "))
+b = float(input("Digite o segundo número: "))
+c = float(input("Digite o terceiro número: "))
+
+maior = a
+
+if b > maior:
+    maior = b
+
+if c > maior:
+    maior = c
+
+print("O maior número é:", maior)
+
+
+
+========== EXERCÍCIO 2 - sobre a resposta da questão 2 ==========
+
+Questão: Número par ou ímpar
+
+2 - [DESCRITIVA] Qual é o propósito do operador % em Python no contexto de verificar se um número é par ou ímpar?
+
+Resposta:
+O operador % (módulo) retorna o resto da divisão entre dois números. 
+No caso de verificar se um número é par ou ímpar, usamos n % 2:
+- Se o resultado for 0, o número é par.
+- Se o resultado for diferente de 0, o número é ímpar.
+
+
+
+========== EXERCÍCIO 3 - sobre a resposta da questão 3 ==========
+
+Questão: Maior de três números
+
+3 - [CORRECAO] O código apresentado tem um erro lógico. Qual é o problema e como você corrigiria para que o programa funcione corretamente?
+
+Resposta:
+O erro lógico geralmente ocorre quando são usadas várias estruturas "if" separadas em vez de "if/elif/else", fazendo com que mais de uma condição possa ser executada ou comparações incorretas aconteçam.
+
+Correção:
+Garantir que as comparações sejam feitas corretamente entre os três números:
+
+if a >= b and a >= c:
+    print("Maior:", a)
+elif b >= a and b >= c:
+    print("Maior:", b)
+else:
+    print("Maior:", c)
+
+
+
+========== EXERCÍCIO 4 - sobre a resposta da questão 4 ==========
+
+Questão: Contagem de 1 até N
+
+4 - [PREVISAO] Qual será o valor final da variável 'cont' após executar o código que conta de 1 até N, se N for 10?
+
+Resposta:
+O valor final de 'cont' será 10, pois a contagem vai de 1 até N (incluindo o 10).
+
+
+
+========== EXERCÍCIO 5 - sobre a resposta da questão 1 ==========
+
+Questão: Média aritmética de dois números
+
+5 - [JUSTIFICATIVA] Por que o código não calcula a média aritmética dos números, apesar do título do exercício mencionar isso?
+
+Resposta:
+Porque o código não realiza a operação de média (soma dos números dividida pela quantidade). 
+Em vez disso, ele apenas compara valores (como encontrar o maior número) ou realiza outra lógica. 
+Para calcular a média corretamente, seria necessário algo como:
+
+media = (a + b) / 2

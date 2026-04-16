@@ -1,4 +1,4 @@
-questão
+questoes 
 
 1. Média aritmética de dois números
 2. Número par ou ímpar
@@ -6,8 +6,6 @@ questão
 4. Contagem de 1 até N
 
 
-
-Resposta aluno rodrigo:
 
 Resposta 1 -
 
@@ -36,6 +34,7 @@ else:
 
 
 Resposta 3 -
+
 a = int(input("Digite o primeiro número: "))
 b = int(input("Digite o segundo número: "))
 c = int(input("Digite o terceiro número: "))
@@ -46,8 +45,10 @@ if b > maior:
     maior = b
 if c > maior:
     maior = c
-Pergunta:
-<pergunta>
+
 print("Maior número:", maior)
 
 
+Resposta 4 -
+
+aluno n fez o codigo 

@@ -1,0 +1,244 @@
+import json
+import re
+from functools import lru_cache
+from openai import OpenAI
+
+# =========================
+# CONFIG LLM STUDIO LOCAL
+# =========================
+client = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+MODEL = "qwen/qwen3-vl-4b"
+
+
+# =========================
+# LEITURA E PARSING DO ARQUIVO
+# =========================
+def carregar_conhecimento(arquivo="conhecimento.txt"):
+    """
+    Lê um arquivo no formato:
+
+    1. Média aritmética de dois números
+    2. Número par ou ímpar
+    3. Maior de três números
+    4. Contagem de 1 até N
+
+    Resposta 1 -
+    ...
+    Resposta 2 -
+    ...
+    Resposta 3 -
+    ...
+    Resposta 4 -
+    ...
+
+    Retorna uma lista de dicionários:
+    [
+        {
+            "numero": 1,
+            "titulo": "...",
+            "codigo": "..."
+        },
+        ...
+    ]
+    """
+    try:
+        with open(arquivo, "r", encoding="utf-8") as f:
+            linhas = f.readlines()
+
+        questoes = {}   # {1: "Média aritmética...", 2: "..."}
+        respostas = {}   # {1: "codigo...", 2: "codigo..."}
+
+        numero_resposta_atual = None
+        codigo_atual = []
+        coletando_codigo = False
+
+        def finalizar_resposta():
+            nonlocal numero_resposta_atual, codigo_atual, coletando_codigo
+
+            if numero_resposta_atual is not None:
+                codigo = "\n".join(codigo_atual).strip()
+
+                # Se o aluno não escreveu nada, mantém um texto padrão
+                if not codigo:
+                    codigo = "[O ALUNO NÃO ESCREVEU CÓDIGO]"
+
+                respostas[numero_resposta_atual] = codigo
+
+            numero_resposta_atual = None
+            codigo_atual = []
+            coletando_codigo = False
+
+        for raw in linhas:
+            linha = raw.rstrip("\n").strip()
+
+            # Linha de questão: "1. Alguma coisa"
+            match_questao = re.match(r"^\s*(\d+)\.\s*(.+?)\s*$", linha)
+
+            # Linha de resposta: "Resposta 1 -"
+            match_resposta = re.match(r"^\s*Resposta\s*(\d+)\s*-\s*$", linha, re.IGNORECASE)
+
+            if match_questao:
+                numero = int(match_questao.group(1))
+                titulo = match_questao.group(2).strip()
+                questoes[numero] = titulo
+                continue
+
+            if match_resposta:
+                # Se já estava coletando uma resposta anterior, salva antes de começar outra
+                if coletando_codigo:
+                    finalizar_resposta()
+
+                numero_resposta_atual = int(match_resposta.group(1))
+                coletando_codigo = True
+                codigo_atual = []
+                continue
+
+            # Linhas do código/resposta do aluno
+            if coletando_codigo:
+                codigo_atual.append(raw.rstrip("\n"))
+
+        # Fecha a última resposta do arquivo
+        if coletando_codigo:
+            finalizar_resposta()
+
+        if not respostas:
+            raise ValueError("Nenhuma resposta válida encontrada no arquivo.")
+
+        # Monta a lista final associando cada resposta ao título correto
+        exercicios = []
+        for numero in sorted(respostas.keys()):
+            exercicios.append({
+                "numero": numero,
+                "titulo": questoes.get(numero, f"Questão {numero}"),
+                "codigo": respostas[numero]
+            })
+
+        return exercicios
+
+    except Exception as e:
+        print("Erro ao ler arquivo:", e)
+        return []
+
+
+# =========================
+# PROMPT OTIMIZADO
+# =========================
+def montar_prompt(numero_exercicio, titulo_exercicio, codigo):
+    return f"""
+Você é um tutor de programação.
+
+Gere exatamente 5 perguntas sobre este exercício.
+
+Regras obrigatórias:
+- Uma pergunta de cada tipo:
+  1. correcao
+  2. justificativa
+  3. descritiva
+  4. modificacao
+  5. previsao
+- Não repita ideias
+- Não dê respostas
+- Não copie o código dentro da pergunta
+- Cada pergunta deve se referir somente a este exercício
+
+Retorne APENAS um JSON válido no formato:
+[
+  {{"tipo": "correcao", "pergunta": "..."}},
+  {{"tipo": "justificativa", "pergunta": "..."}},
+  {{"tipo": "descritiva", "pergunta": "..."}},
+  {{"tipo": "modificacao", "pergunta": "..."}},
+  {{"tipo": "previsao", "pergunta": "..."}}
+]
+
+Exercício {numero_exercicio}:
+{titulo_exercicio}
+
+Código:
+{codigo}
+"""
+
+
+# =========================
+# EXTRAÇÃO SEGURA DO JSON
+# =========================
+def extrair_json(texto):
+    inicio = texto.find("[")
+    fim = texto.rfind("]") + 1
+
+    if inicio != -1 and fim != -1:
+        try:
+            return json.loads(texto[inicio:fim])
+        except Exception:
+            pass
+
+    return []
+
+
+# =========================
+# CHAMADA AO MODELO
+# =========================
+@lru_cache(maxsize=100)
+def gerar_perguntas_ia(numero_exercicio, titulo_exercicio, codigo):
+    prompt = montar_prompt(numero_exercicio, titulo_exercicio, codigo)
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "Você é um tutor de programação."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4
+        )
+
+        texto = response.choices[0].message.content.strip()
+        perguntas = extrair_json(texto)
+
+        if not perguntas:
+            print("⚠️ Não foi possível interpretar a resposta da IA:")
+            print(texto)
+
+        return perguntas
+
+    except Exception as e:
+        print("Erro na chamada da IA:", e)
+        return []
+
+
+# =========================
+# EXECUÇÃO PRINCIPAL
+# =========================
+def main():
+    exercicios = carregar_conhecimento()
+
+    if not exercicios:
+        print("Erro ao carregar dados.")
+        return
+
+    for idx, exercicio in enumerate(exercicios, 1):
+        numero = exercicio["numero"]
+        titulo = exercicio["titulo"]
+        codigo = exercicio["codigo"]
+
+        print(f"\n========== EXERCÍCIO {idx} - sobre a resposta da questão {numero} ==========\n")
+        print(f"Questão: {titulo}\n")
+
+        perguntas = gerar_perguntas_ia(numero, titulo, codigo)
+
+        for i, p in enumerate(perguntas, 1):
+            tipo = p.get("tipo", "desconhecido").upper()
+            pergunta = p.get("pergunta", "")
+            print(f"{i} - [{tipo}] {pergunta}")
+
+        print("\n" + "-" * 60 + "\n")
+
+
+# =========================
+# RODAR
+# =========================
+if __name__ == "__main__":
+    main()
