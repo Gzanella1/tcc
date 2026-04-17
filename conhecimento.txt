@@ -1,54 +1,100 @@
-questoes 
+QUESTOES :
 
-1. Média aritmética de dois números
-2. Número par ou ímpar
-3. Maior de três números
-4. Contagem de 1 até N
+
+1- Contagem de vogais em uma string, Crie um programa que receba uma string e conte quantas vogais existem nela.
+2 - Números primos em um intervalo. Faça um programa que exiba todos os números primos entre 1 e 50.
+3- Soma dos elementos de uma matriz. Dada uma matriz 3x3, calcule a soma de todos os elementos.
+4 -Inverter uma string sem usar slicing .Implemente um programa que inverta uma string sem usar [::-1].
+5 - Verificar número palíndromo. Crie um programa que verifique se um número é palíndromo (ex: 121, 1331).
+
+
+
+
+
 
 
 
 Resposta 1 -
 
-a = int(input("Digite o primeiro número: "))
-b = int(input("Digite o segundo número: "))
-// c = int(input("Digite o terceiro número: "))
+texto = input("Digite uma frase: ").lower()
+vogais = "aeiou"
+contador = 0
 
-maior = a
+for letra in texto:
+    if letra in vogais:
+        contador += 1
 
-if b > maior:
-    maior = b
-if c > maior:
-    maior = c
+print("Quantidade de vogais:", contador)
 
-print("Maior número:", maior)
+
+
 
 
 Resposta 2 -
-n = int(input("Digite um número: "))
 
-if n % 2 == 0:
-    print("Par")
-else:
-    print("Ímpar")
+for num in range(2, 51):
+    primo = True
+
+    for i in range(2, num):
+        if num % i == 0:
+            primo = False
+            break
+
+    if primo:
+        print(num)
 
 
 
 Resposta 3 -
 
-a = int(input("Digite o primeiro número: "))
-b = int(input("Digite o segundo número: "))
-c = int(input("Digite o terceiro número: "))
+matriz = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+]
 
-maior = a
+soma = 0
 
-if b > maior:
-    maior = b
-if c > maior:
-    maior = c
+for linha in matriz:
+    for elemento in linha:
+        soma += elemento
 
-print("Maior número:", maior)
+print("Soma total:", soma)
 
 
-Resposta 4 -
 
-aluno n fez o codigo 
+
+Resposta 4 - 
+
+texto = input("Digite uma palavra: ")
+invertida = ""
+
+for i in range(len(texto)-1, -1, -1):
+    invertida += texto[i]
+
+print("Invertida:", invertida)
+
+
+
+
+
+
+Resposta 5 -
+numero = input("Digite um número: ")
+
+invertido = numero[::-1]
+
+if numero == invertido:
+    print("É palíndromo")
+else:
+    print("Não é palíndromo")
+
+
+
+
+
+
+
+
+
+

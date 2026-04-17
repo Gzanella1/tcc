@@ -270,8 +270,8 @@ def main():
         titulo = exercicio["titulo"]
         codigo = exercicio["codigo"]
 
-        bloco = f"\n========== EXERCÍCIO {idx} - sobre a resposta da questão {numero} ==========\n\n"
-        bloco += f"Questão: {titulo}\n\n"
+        bloco = f"\n========== Exercicio gerado com base na sua resposta da questão {numero} ==========\n\n"
+        bloco += f"{titulo}\n\n"
 
         perguntas = gerar_perguntas_ia(numero, titulo, codigo, tipo)
 

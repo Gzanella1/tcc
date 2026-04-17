@@ -1,97 +1,59 @@
 CORREÇÃO AUTOMÁTICA
-Data: 16/04/2026 18:05:44
-Total de questões: 5
-Média geral: 2.70/10
-Questões com nota >= 7.0: 1
+Data: 17/04/2026 16:26:21
+Total de questões: 1
+Média geral: 0.00/10
+Questões com nota >= 7.0: 0
 ========================================================================
 
 EXERCÍCIO 1
 Tipo: modificacao
-Nota: 3.00/10
-Status: parcial
-Feedback: Código corretamente modificado conforme solicitado.
-
-Enunciado:
-Média aritmética de dois números
-
-1 - [MODIFICACAO] Remova o comentário da linha que define a variável 'c' e
- atualize o código para calcular o maior entre os três números.
-
-Detalhes:
-- Sem testes para validar a solução.
-- Requisitos atendidos: Remoção do comentário da linha que define a variável 'c'; Atualização do código para calcular o maior entre os três números
-
-========================================================================
-
-EXERCÍCIO 2
-Tipo: descritiva
-Nota: 2.00/10
-Status: parcial
-Feedback: Resposta confusa e incorreta sobre o propósito do operador %.
-
-Enunciado:
-Número par ou ímpar
-
-2 - [DESCRITIVA] Qual é o propósito do operador % em Python no contexto de verificar se um número é par ou ímpar?
-
-Detalhes:
-- Melhorias: Explicar que o operador % retorna o resto da divisão entre dois números.; Relacionar esse resto com a verificação de paridade: se resto é 0, o número é par; se for 1, é ímpar.
-
-========================================================================
-
-EXERCÍCIO 3
-Tipo: correcao
 Nota: 0.00/10
 Status: erro
-Feedback: Erro de sintaxe: invalid syntax. Is this intended to be part of the string? linha 1
+Feedback: O código enviado está vazio e contém erro lógico (variável não definida). Não atende ao requisito de validar palíndromo ignorando espaços e caracteres não numéricos.
 
 Enunciado:
-Maior de três números
+========== Exercicio gerado com base na sua resposta da questão 1 ==========
 
-3 - [CORRECAO] O código apresentado tem um erro lógico. Qual é o problema e como você corrigiria para que o programa funcione corretamente?
+Questão 1
 
-Detalhes:
-- O código não compila em Python.
+1 - [JUSTIFICATIVA] Por que o código converte a entrada do usuário para minúsculas antes de contar as vogais?
 
-========================================================================
-
-EXERCÍCIO 4
-Tipo: previsao
-Nota: 0.00/10
-Status: erro
-Feedback: Resposta incorreta para a saída esperada.
-
-Enunciado:
-Contagem de 1 até N
-
-4 - [PREVISAO] Qual será o valor final da variável 'cont' após executar o código que conta de 1 até N, se N for 10?
-
-Detalhes:
-- Saída correta calculada a partir do código-base.
-- Similaridade com a resposta do aluno: 0.000
-
-Testes executados:
-- Teste ?: FALHOU
-  Saída esperada:
-
-  Saída obtida:
+resposta 1 - para facilitar a verificação de uma vogal A e a são diferentes da comparação if
 
 
-========================================================================
 
-EXERCÍCIO 5
-Tipo: justificativa
-Nota: 8.50/10
-Status: parcial
-Feedback: Resposta parcialmente correta, identifica o problema, mas não explica por que o código não calcula a média.
 
-Enunciado:
-Média aritmética de dois números
 
-5 - [JUSTIFICATIVA] Por que o código não calcula a média aritmética dos números, apesar do título do exercício mencionar isso?
+========== Exercicio gerado com base na sua resposta da questão 2 ==========
+
+Questão 2
+
+2 - [DESCRITIVA] Qual é o objetivo do código fornecido e como ele identifica números primos?
+
+
+ resposta 2 - o objetivo do codigo é verificiar se o numero é primo, ele identifica vendo se o numero é divizivel por 5
+
+
+
+========== Exercicio gerado com base na sua resposta da questão 3 ==========
+
+Questão 3
+
+3 - [CORRECAO] Qual é o valor correto da soma total dos elementos da matriz?
+
+
+ resposta 3 - 59
+
+
+
+========== Exercicio gerado com base na sua resposta da questão 4 ==========
+
+Questão 4
+
+4 - [PREVISAO] Qua...
 
 Detalhes:
-- Acertos: Identifica que o código não realiza a operação de média.
-- Melhorias: Explicar por que o código não calcula a média, mesmo que o título mencione isso.
+- Nenhum código foi fornecido pelo aluno.
+- Faltantes: O código não foi fornecido (vazio); O código não define a variável 'invertido' (erro lógico); O código não realiza a inversão correta da string limpa; O código não imprime o resultado conforme exigido (se o enunciado pede saída/retorno explícito)
 
 ========================================================================

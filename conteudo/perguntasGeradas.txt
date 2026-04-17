@@ -1,76 +1,70 @@
-========== EXERCÍCIO 1 - sobre a resposta da questão 1 ==========
 
-Questão: Média aritmética de dois números
+========== Exercicio gerado com base na sua resposta da questão 1 ==========
 
-1 - [MODIFICACAO] Remova o comentário da linha que define a variável 'c' e
- atualize o código para calcular o maior entre os três números.
+Questão 1
 
-Resposta:
-a = float(input("Digite o primeiro número: "))
-b = float(input("Digite o segundo número: "))
-c = float(input("Digite o terceiro número: "))
+1 - [JUSTIFICATIVA] Por que o código converte a entrada do usuário para minúsculas antes de contar as vogais?
+ 
+resposta 1 - para facilitar a verificação de uma vogal A e a são diferentes da comparação if 
 
-maior = a
+ 
+ 
+ 
 
-if b > maior:
-    maior = b
-if c > maior:
-    maior = c
+========== Exercicio gerado com base na sua resposta da questão 2 ==========
 
+Questão 2
 
+2 - [DESCRITIVA] Qual é o objetivo do código fornecido e como ele identifica números primos?
+ 
+ 
+ resposta 2 - o objetivo do codigo é verificiar se o numero é primo, ele identifica vendo se o numero é divizivel por 5 
+ 
+ 
 
-========== EXERCÍCIO 2 - sobre a resposta da questão 2 ==========
+========== Exercicio gerado com base na sua resposta da questão 3 ==========
 
-Questão: Número par ou ímpar
+Questão 3
 
-2 - [DESCRITIVA] Qual é o propósito do operador % em Python no contexto de verificar se um número é par ou ímpar?
+3 - [CORRECAO] Qual é o valor correto da soma total dos elementos da matriz?
+ 
+ 
+ resposta 3 - 59
+ 
+ 
 
-Resposta:
-O operador % (módulo) retorna a soma entre 2 numeros.
+========== Exercicio gerado com base na sua resposta da questão 4 ==========
 
+Questão 4
 
+4 - [PREVISAO] Qual será a saída do programa se o usuário digitar 'Python'?
+ 
+ 
+ resposta 4 - nohtyJ
+ 
 
-========== EXERCÍCIO 3 - sobre a resposta da questão 3 ==========
+========== Exercicio gerado com base na sua resposta da questão 5 ==========
 
-Questão: Maior de três números
+Questão 5
 
-3 - [CORRECAO] O código apresentado tem um erro lógico. Qual é o problema e como você corrigiria para que o programa funcione corretamente?
+5 - [MODIFICACAO] Como modificar o código para que ele também valide se o número é palíndromo ignorando os espaços e caracteres não numéricos?
+ 
+ 
+ resposta 5 - 
+ 
+ numero = input("Digite um número: ")
 
-Resposta:
-O erro lógico geralmente ocorre quando são usadas várias estruturas "if" separadas em vez de "if/elif/else", fazendo com que mais de uma condição possa ser executada ou comparações incorretas aconteçam.
+# Filtra apenas os caracteres numéricos
+numero_limpo = ""
 
-Correção:
-Garantir que as comparações sejam feitas corretamente entre os três números:
+for c in numero:
+    if c.isdigit():
+        numero_limpo += c
 
-if a >= b and a >= c:
-    print("Maior:", a)
-elif b >= a and b >= c:
-    print("Maior:", b)
+# Inverte o número limpo
+invertido = invertido;
+
+if numero_limpo == invertido:
+    print("É palíndromo")
 else:
-    print("Maior:", c)
-
-
-
-========== EXERCÍCIO 4 - sobre a resposta da questão 4 ==========
-
-Questão: Contagem de 1 até N
-
-4 - [PREVISAO] Qual será o valor final da variável 'cont' após executar o código que conta de 1 até N, se N for 10?
-
-Resposta:
-O valor final de 'cont' será 10, pois a contagem vai de 1 até N (incluindo o 10).
-
-
-
-========== EXERCÍCIO 5 - sobre a resposta da questão 1 ==========
-
-Questão: Média aritmética de dois números
-
-5 - [JUSTIFICATIVA] Por que o código não calcula a média aritmética dos números, apesar do título do exercício mencionar isso?
-
-Resposta:
-Porque o código não realiza a operação de média (soma dos números dividida pela quantidade). 
-Em vez disso, ele apenas compara valores (como encontrar o maior número) ou realiza outra lógica. 
-Para calcular a média corretamente, seria necessário algo como:
-
-media = (a + b) / 2
+    print("Não é palíndromo")
