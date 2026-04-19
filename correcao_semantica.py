@@ -293,22 +293,18 @@ def carregar_arquivo_texto(path: Path) -> str:
 
 def split_exercicios(texto: str) -> List[str]:
     """
-    Tenta separar blocos que comecem com linhas do tipo:
-    ========== EXERCÍCIO 1 ==========
+    Divide os exercícios mesmo com textos variados tipo:
+    ========== Exercicio gerado com base na sua resposta da questão X ==========
     """
-    padrao = re.compile(r"(?m)^\s*=+\s*EXERC[IÍ]CIO\s*\d+.*=+\s*$")
-    matches = list(padrao.finditer(texto))
-    if not matches:
-        return [texto.strip()] if texto.strip() else []
 
-    blocos = []
-    for i, m in enumerate(matches):
-        inicio = m.end()
-        fim = matches[i + 1].start() if i + 1 < len(matches) else len(texto)
-        bloco = texto[inicio:fim].strip()
-        if bloco:
-            blocos.append(bloco)
-    return blocos if blocos else [texto.strip()]
+    padrao = re.compile(r"(?i)=+\s*exercicio.*?=+")
+
+    partes = re.split(padrao, texto)
+
+    # Remove partes vazias
+    blocos = [p.strip() for p in partes if p.strip()]
+
+    return blocos
 
 
 def parse_tests_field(texto: str) -> List[Dict[str, str]]:
@@ -439,83 +435,52 @@ def inferir_tipo(texto: str) -> str:
 
     return ""
 
-
 def parse_block(block: str, idx: int) -> Questao:
-    data: Dict[str, str] = {}
-    current_field: Optional[str] = None
-    buffer: List[str] = []
+    linhas = block.splitlines()
 
-    def flush() -> None:
-        nonlocal buffer, current_field
-        if current_field is not None:
-            conteudo = "\n".join(buffer).strip()
-            if conteudo:
-                if current_field in data and data[current_field]:
-                    data[current_field] += "\n" + conteudo
-                else:
-                    data[current_field] = conteudo
-        buffer = []
+    tipo = ""
+    enunciado = ""
+    resposta = []
+    capturando_resposta = False
 
-    for linha in block.splitlines():
-        m = re.match(r"^\s*([A-Za-zÀ-ÿ0-9 _/()\-]{2,80})\s*:\s*(.*)$", linha)
+    for linha in linhas:
+        linha_strip = linha.strip()
+
+        # Detecta pergunta: 1 - [TIPO] texto
+        m = re.match(r"\d+\s*-\s*\[(\w+)\]\s*(.+)", linha_strip, re.IGNORECASE)
         if m:
-            label = normalizar_label(m.group(1))
-            if label in ALIASES_CAMPOS:
-                flush()
-                current_field = ALIASES_CAMPOS[label]
-                primeiro_valor = m.group(2).strip()
-                buffer = [primeiro_valor] if primeiro_valor else []
-                continue
+            tipo = m.group(1)
+            enunciado = m.group(2)
+            capturando_resposta = False
+            continue
 
-        if current_field is None:
-            data["enunciado"] = data.get("enunciado", "") + linha + "\n"
-        else:
-            buffer.append(linha)
+        # Detecta resposta
+        m2 = re.match(r"resposta\s*\d+\s*-\s*(.*)", linha_strip, re.IGNORECASE)
+        if m2:
+            capturando_resposta = True
+            if m2.group(1):
+                resposta.append(m2.group(1))
+            continue
 
-    flush()
+        if capturando_resposta:
+            resposta.append(linha)
 
-    enunciado = normalizar_texto(data.get("enunciado", ""))
-    resposta_aluno = normalizar_texto(data.get("resposta_aluno", ""))
-    resposta_referencia = normalizar_texto(data.get("resposta_referencia", ""))
-    codigo = normalizar_texto(data.get("codigo", ""))
+    resposta_texto = "\n".join(resposta).strip()
 
-    if not codigo:
-        codigo = extrair_codigo(enunciado)
-        if not codigo and resposta_aluno:
-            codigo = extrair_codigo(resposta_aluno)
-
-    tipo = normalizar_tipo(data.get("tipo", "")) or inferir_tipo(enunciado)
-
-    entrada = normalizar_texto(data.get("entrada", ""))
-    saida = normalizar_texto(data.get("saida", ""))
-    testes = parse_tests_field(data.get("testes", ""))
-
-    extras = {
-        k: v
-        for k, v in data.items()
-        if k not in {
-            "tipo",
-            "enunciado",
-            "resposta_aluno",
-            "resposta_referencia",
-            "codigo",
-            "entrada",
-            "saida",
-            "testes",
-        }
-    }
+    # Extrai código se houver
+    codigo = extrair_codigo(resposta_texto)
 
     return Questao(
         idx=idx,
-        tipo=tipo,
-        enunciado=enunciado,
-        resposta_aluno=resposta_aluno,
-        resposta_referencia=resposta_referencia,
-        codigo=codigo,
-        entrada=entrada,
-        saida=saida,
-        testes=testes,
-        extras=extras,
+        tipo=normalizar_tipo(tipo),
+        enunciado=normalizar_texto(enunciado),
+        resposta_aluno=normalizar_texto(resposta_texto),
+        resposta_referencia="",
+        codigo=normalizar_texto(codigo),
+        entrada="",
+        saida="",
+        testes=[],
+        extras={},
     )
 
 
@@ -995,13 +960,46 @@ def avaliar_texto_heuristico(q: Questao) -> Resultado:
 
 
 def avaliar_texto_llm(q: Questao) -> Resultado:
-    if not USAR_LLM:
-        return avaliar_texto_heuristico(q)
+    resposta = normalizar_texto(q.resposta_aluno)
+    if not resposta:
+        return Resultado(
+            idx=q.idx,
+            tipo=q.tipo,
+            nota=0.0,
+            status="erro",
+            feedback="Resposta vazia.",
+            detalhes=["Sem resposta para avaliar."],
+        )
+
+    enunciado = normalizar_texto(q.enunciado)
+    resp_low = sem_acentos(resposta.lower())
+    enun_low = sem_acentos(enunciado.lower())
+
+    # =========================
+    # REGRA OBJETIVA DE CONCEITO
+    # =========================
+    conceito_ok = False
+
+    if any(p in enun_low for p in [
+        "minusc", "maiusc", "lower", "upper", "vogal", "vogais", "padron"
+    ]):
+        if any(p in resp_low for p in [
+            "minusc", "maiusc", "lower", "upper", "padron", "difer", "compar"
+        ]):
+            conceito_ok = True
+
+    # Se a resposta já mostra o conceito central, não deixa a nota cair demais
+    if conceito_ok:
+        nota_minima = 7.0
+        status_base = "parcial"
+        feedback_base = "Há entendimento do conceito principal, mas a explicação pode ser melhor."
+    else:
+        nota_minima = 0.0
+        status_base = "erro"
+        feedback_base = "A resposta não demonstra com clareza o conceito pedido."
 
     prompt = f"""
-Você é um corretor rigoroso, mas justo.
-
-Tipo da questão: {q.tipo}
+Você é um corretor de respostas textuais de programação.
 
 Enunciado:
 {q.enunciado}
@@ -1009,33 +1007,36 @@ Enunciado:
 Resposta do aluno:
 {q.resposta_aluno or "(vazia)"}
 
-Regras:
-- avalie aderência ao pedido do enunciado
-- considere correção conceitual, completude, clareza e objetividade
-- penalize fuga do tema
-- seja consistente com notas de 0 a 10
-- NÃO use nota apenas 0 ou 10 se houver margem de parcialidade
-- não invente informações que não estejam na resposta
+Regras de correção:
+- Priorize o CONCEITO, não a gramática.
+- Se a ideia principal estiver correta, a nota deve ser alta.
+- Erros de português ou frase confusa não devem derrubar muito a nota.
+- Se a resposta estiver parcialmente correta, dê nota intermediária.
+- Se estiver errada conceitualmente, dê nota baixa.
+- Não seja rígido demais com a forma.
 
-Retorne APENAS JSON válido com este formato:
+Avalie estes itens:
+1. entendimento do conceito
+2. completude
+3. clareza
 
+Retorne APENAS JSON válido neste formato:
 {{
   "nota": 0,
   "status": "ok|parcial|erro",
-  "feedback": "texto curto e claro",
+  "feedback": "texto curto",
   "acertos": ["..."],
   "melhorias": ["..."]
 }}
-
-Use nota inteira ou decimal, mas sempre entre 0 e 10.
 """
+
     obj = chamar_llm_json(
         [
-            {"role": "system", "content": "Você devolve JSON válido e faz correção de respostas textuais."},
+            {"role": "system", "content": "Você devolve JSON válido e corrige respostas textuais com justiça."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.15,
-        max_tokens=1200,
+        max_tokens=900,
     )
 
     if isinstance(obj, dict):
@@ -1055,6 +1056,12 @@ Use nota inteira ou decimal, mas sempre entre 0 e 10.
         if not isinstance(melhorias, list):
             melhorias = [str(melhorias)]
 
+        # aplica piso quando o conceito principal está correto
+        if conceito_ok:
+            nota = max(nota, nota_minima)
+            if status == "erro":
+                status = status_base
+
         detalhes = []
         if acertos:
             detalhes.append("Acertos: " + "; ".join(str(x) for x in acertos[:5]))
@@ -1066,11 +1073,32 @@ Use nota inteira ou decimal, mas sempre entre 0 e 10.
             tipo=q.tipo,
             nota=max(0.0, min(10.0, round(nota, 2))),
             status=status,
-            feedback=str(obj.get("feedback", "")).strip() or "Correção sem feedback detalhado.",
-            detalhes=detalhes,
+            feedback=str(obj.get("feedback", "")).strip() or feedback_base,
+            detalhes=detalhes if detalhes else [feedback_base],
         )
 
-    return avaliar_texto_heuristico(q)
+    # fallback quando o LLM falha
+    if conceito_ok:
+        return Resultado(
+            idx=q.idx,
+            tipo=q.tipo,
+            nota=7.5,
+            status="parcial",
+            feedback=feedback_base,
+            detalhes=["Correção feita por regra objetiva porque o LLM não retornou JSON válido."],
+        )
+
+    return Resultado(
+        idx=q.idx,
+        tipo=q.tipo,
+        nota=3.0,
+        status=status_base,
+        feedback=feedback_base,
+        detalhes=["Correção feita por fallback heurístico porque o LLM não retornou JSON válido."],
+    )
+
+
+
 
 
 def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[str, str]]) -> Resultado:

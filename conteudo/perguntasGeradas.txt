@@ -1,46 +1,55 @@
 
-========== Exercicio gerado com base na sua resposta da questão 1 ==========
-
-Questão 1
-
-1 - [JUSTIFICATIVA] Por que o código converte a entrada do usuário para minúsculas antes de contar as vogais?
- 
-resposta 1 - para facilitar a verificação de uma vogal A e a são diferentes da comparação if 
-
- 
- 
- 
-
-========== Exercicio gerado com base na sua resposta da questão 2 ==========
-
-Questão 2
-
-2 - [DESCRITIVA] Qual é o objetivo do código fornecido e como ele identifica números primos?
- 
- 
- resposta 2 - o objetivo do codigo é verificiar se o numero é primo, ele identifica vendo se o numero é divizivel por 5 
- 
  
 
 ========== Exercicio gerado com base na sua resposta da questão 3 ==========
 
 Questão 3
 
-3 - [CORRECAO] Qual é o valor correto da soma total dos elementos da matriz?
- 
- 
- resposta 3 - 59
- 
- 
+3 - [PREVISAO] Qual será o valor impresso na saída do programa após executar o código fornecido?
+ resposta 3 -
+
+CODIGO:
+matriz = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+]
+
+soma = 0
+
+for linha in matriz:
+    for elemento in linha:
+        soma += elemento
+
+print("Soma total:", soma)
+
+ Soma total: 45
+
+
+
 
 ========== Exercicio gerado com base na sua resposta da questão 4 ==========
 
 Questão 4
 
-4 - [PREVISAO] Qual será a saída do programa se o usuário digitar 'Python'?
+4 - [CORRECAO] Qual é o erro na linha que define a variável 'invertida' e como corrigir?
+ 
+
+resposta 4 -
+
+texto = input("Digite uma palavra: ")
+invertida = ""
+
+
+
+for i in range(len(texto)-1, -1, -1):
+    invertida += texto[i]
+
+print("Invertida:", invertida)
+
+
  
  
- resposta 4 - nohtyJ
  
 
 ========== Exercicio gerado com base na sua resposta da questão 5 ==========
@@ -50,21 +59,19 @@ Questão 5
 5 - [MODIFICACAO] Como modificar o código para que ele também valide se o número é palíndromo ignorando os espaços e caracteres não numéricos?
  
  
- resposta 5 - 
  
- numero = input("Digite um número: ")
+ 
+Resposta 5 -
+ 
+import re
 
-# Filtra apenas os caracteres numéricos
-numero_limpo = ""
+texto = input("Digite algo: ")
 
-for c in numero:
-    if c.isdigit():
-        numero_limpo += c
+# remove tudo que não é número
+numero = re.sub(r'[^0-9]', '', texto)
 
-# Inverte o número limpo
-invertido = invertido;
-
-if numero_limpo == invertido:
+# verifica palíndromo
+if numero == numero[::-1]:
     print("É palíndromo")
 else:
     print("Não é palíndromo")

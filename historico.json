@@ -18,5 +18,13 @@
     {
         "role": "assistant",
         "content": "Pergunta:  \nVocê já digitou os dois números no input? Ou está tentando fazer algo diferente? Vamos focar na lógica: você precisa somar os dois números e depois dividir por 2 — está pensando nisso?\n\nDica:  \nLembre-se: a média é (a + b) / 2. O que você está fazendo com os números depois de ler?\n\nMotivação:  \nTente novamente, mas me diga: qual é o próximo passo que você planeja fazer depois de ler os números?"
+    },
+    {
+        "role": "user",
+        "content": "oi "
+    },
+    {
+        "role": "assistant",
+        "content": "Pergunta:  \nVocê quer continuar com a questão 1 (média aritmética) ou precisa de ajuda com outra questão? Vou te ajudar passo a passo, mas preciso saber o foco atual.\n\nDica:  \nAqui vai uma dica leve: se você está lendo dois números, o próximo passo é somá-los — e depois dividir por 2. O que você pensa que fazer depois?\n\nMotivação:  \nTente novamente, mas me diga: qual é o primeiro erro ou dificuldade que você está enfrentando?"
     }
 ]

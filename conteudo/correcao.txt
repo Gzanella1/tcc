@@ -1,59 +1,111 @@
 CORREÇÃO AUTOMÁTICA
-Data: 17/04/2026 16:26:21
-Total de questões: 1
-Média geral: 0.00/10
+Data: 19/04/2026 20:16:35
+Total de questões: 3
+Média geral: 1.00/10
 Questões com nota >= 7.0: 0
 ========================================================================
 
 EXERCÍCIO 1
-Tipo: modificacao
+Tipo: previsao
 Nota: 0.00/10
 Status: erro
-Feedback: O código enviado está vazio e contém erro lógico (variável não definida). Não atende ao requisito de validar palíndromo ignorando espaços e caracteres não numéricos.
+Feedback: Resposta incorreta para a saída esperada.
 
 Enunciado:
-========== Exercicio gerado com base na sua resposta da questão 1 ==========
-
-Questão 1
-
-1 - [JUSTIFICATIVA] Por que o código converte a entrada do usuário para minúsculas antes de contar as vogais?
-
-resposta 1 - para facilitar a verificação de uma vogal A e a são diferentes da comparação if
-
-
-
-
-
-========== Exercicio gerado com base na sua resposta da questão 2 ==========
-
-Questão 2
-
-2 - [DESCRITIVA] Qual é o objetivo do código fornecido e como ele identifica números primos?
-
-
- resposta 2 - o objetivo do codigo é verificiar se o numero é primo, ele identifica vendo se o numero é divizivel por 5
-
-
-
-========== Exercicio gerado com base na sua resposta da questão 3 ==========
-
-Questão 3
-
-3 - [CORRECAO] Qual é o valor correto da soma total dos elementos da matriz?
-
-
- resposta 3 - 59
-
-
-
-========== Exercicio gerado com base na sua resposta da questão 4 ==========
-
-Questão 4
-
-4 - [PREVISAO] Qua...
+Qual será o valor impresso na saída do programa após executar o código fornecido?
 
 Detalhes:
-- Nenhum código foi fornecido pelo aluno.
-- Faltantes: O código não foi fornecido (vazio); O código não define a variável 'invertido' (erro lógico); O código não realiza a inversão correta da string limpa; O código não imprime o resultado conforme exigido (se o enunciado pede saída/retorno explícito)
+- Saída correta calculada a partir do código-base.
+- Similaridade com a resposta do aluno: 0.000
+
+Testes executados:
+- Teste ?: FALHOU
+  Saída esperada:
+
+  Saída obtida:
+
+
+========================================================================
+
+EXERCÍCIO 2
+Tipo: correcao
+Nota: 0.00/10
+Status: erro
+Feedback: Não foi possível gerar nem localizar casos de teste confiáveis.
+
+Enunciado:
+Qual é o erro na linha que define a variável 'invertida' e como corrigir?
+
+Detalhes:
+- Sem testes para validar a solução.
+
+========================================================================
+
+EXERCÍCIO 3
+Tipo: modificacao
+Nota: 3.00/10
+Status: parcial
+Feedback: O código já ignora espaços e caracteres não numéricos, conforme solicitado.
+
+Enunciado:
+Como modificar o código para que ele também valide se o número é palíndromo ignorando os espaços e caracteres não numéricos?
+
+Detalhes:
+- Teste 1: FALHOU (similaridade=0.649, motivo=saída diferente)
+- Teste 2: FALHOU (similaridade=0.711, motivo=saída diferente)
+- Teste 3: FALHOU (similaridade=0.649, motivo=saída diferente)
+- Teste 4: FALHOU (similaridade=0.683, motivo=saída diferente)
+- Teste 5: FALHOU (similaridade=0.683, motivo=saída diferente)
+- Teste 6: FALHOU (similaridade=0.649, motivo=saída diferente)
+
+Testes executados:
+- Teste 1: FALHOU
+  Entrada:
+    12321
+  Saída esperada:
+    É palíndromo
+  Saída obtida:
+    Digite algo: É palíndromo
+  Motivo: saída diferente
+- Teste 2: FALHOU
+  Entrada:
+    12345
+  Saída esperada:
+    Não é palíndromo
+  Saída obtida:
+    Digite algo: Não é palíndromo
+  Motivo: saída diferente
+- Teste 3: FALHOU
+  Entrada:
+    123a21
+  Saída esperada:
+    É palíndromo
+  Saída obtida:
+    Digite algo: É palíndromo
+  Motivo: saída diferente
+- Teste 4: FALHOU
+  Entrada:
+    123a21b
+  Saída esperada:
+    Não é palíndromo
+  Saída obtida:
+    Digite algo: É palíndromo
+  Motivo: saída diferente
+- Teste 5: FALHOU
+  Entrada:
+    12321a
+  Saída esperada:
+    Não é palíndromo
+  Saída obtida:
+    Digite algo: É palíndromo
+  Motivo: saída diferente
+- Teste 6: FALHOU
+  Entrada:
+    12321 12321
+  Saída esperada:
+    É palíndromo
+  Saída obtida:
+    Digite algo: É palíndromo
+  Motivo: saída diferente
 
 ========================================================================
