@@ -157,6 +157,7 @@ def montar_prompt(numero_exercicio, titulo_exercicio, codigo, tipo_pergunta):
     Você é um tutor de programação.
 
     Gere exatamente 1 pergunta do tipo "{tipo_pergunta}" sobre este exercício.
+    As perguntas de previsão devem ser bem formuladas.
 
     Regras obrigatórias:
     - Não dê resposta

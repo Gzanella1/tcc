@@ -1,53 +1,44 @@
 
+========== Exercicio gerado com base na sua resposta da questão 1 ==========
+
+Questão 1
+
+1 - [DESCRITIVA] Qual é o propósito do código fornecido e como ele funciona passo a passo?
+ 
+ 
+ 
+ 
+ 
+
+========== Exercicio gerado com base na sua resposta da questão 2 ==========
+
+Questão 2
+
+2 - [MODIFICACAO] Como modificar o código para imprimir também os números que são divisíveis por 2, mas apenas se forem primos?
+ 
+ 
+ 
+ 
  
 
 ========== Exercicio gerado com base na sua resposta da questão 3 ==========
 
 Questão 3
 
-3 - [PREVISAO] Qual será o valor impresso na saída do programa após executar o código fornecido?
- resposta 3 -
-
-CODIGO:
-matriz = [
-    [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, 9]
-]
-
-soma = 0
-
-for linha in matriz:
-    for elemento in linha:
-        soma += elemento
-
-print("Soma total:", soma)
-
- Soma total: 45
-
-
-
+3 - [PREVISAO] Qual será o valor impresso na saída do programa após a execução do código fornecido?
+ 
+ 
+ 
+ 
+ 
 
 ========== Exercicio gerado com base na sua resposta da questão 4 ==========
 
 Questão 4
 
-4 - [CORRECAO] Qual é o erro na linha que define a variável 'invertida' e como corrigir?
+4 - [CORRECAO] O código apresentado inverte corretamente a string digitada? Se sim, explique por que; se não, identifique o erro e como corrigir.
  
-
-resposta 4 -
-
-texto = input("Digite uma palavra: ")
-invertida = ""
-
-
-
-for i in range(len(texto)-1, -1, -1):
-    invertida += texto[i]
-
-print("Invertida:", invertida)
-
-
+ 
  
  
  
@@ -56,22 +47,9 @@ print("Invertida:", invertida)
 
 Questão 5
 
-5 - [MODIFICACAO] Como modificar o código para que ele também valide se o número é palíndromo ignorando os espaços e caracteres não numéricos?
+5 - [JUSTIFICATIVA] Por que o código não funciona corretamente para números que contêm zeros no início ou fim, como '1001'?
  
  
  
  
-Resposta 5 -
  
-import re
-
-texto = input("Digite algo: ")
-
-# remove tudo que não é número
-numero = re.sub(r'[^0-9]', '', texto)
-
-# verifica palíndromo
-if numero == numero[::-1]:
-    print("É palíndromo")
-else:
-    print("Não é palíndromo")

@@ -195,35 +195,29 @@ def extrair_codigo(texto: str) -> str:
     return texto.strip()
 
 
-def extrair_json(texto: str) -> Optional[Any]:
+def extrair_json(texto: str):
     if not texto:
         return None
 
     texto = texto.strip()
 
-    # remove cercas markdown se existirem
-    if texto.startswith("```"):
-        texto = re.sub(r"^```[a-zA-Z0-9_-]*\n?", "", texto)
-        texto = re.sub(r"\n?```$", "", texto).strip()
+    # Remove markdown
+    texto = re.sub(r"^```[a-zA-Z]*", "", texto)
+    texto = re.sub(r"```$", "", texto).strip()
 
+    # Tenta direto
     try:
         return json.loads(texto)
-    except Exception:
+    except:
         pass
 
-    candidatos = []
-    m = re.search(r"\{.*\}", texto, flags=re.S)
-    if m:
-        candidatos.append(m.group(0))
-    m = re.search(r"\[.*\]", texto, flags=re.S)
-    if m:
-        candidatos.append(m.group(0))
-
-    for c in candidatos:
+    # Procura JSON dentro do texto
+    match = re.search(r"\{.*\}", texto, re.S)
+    if match:
         try:
-            return json.loads(c)
-        except Exception:
-            continue
+            return json.loads(match.group(0))
+        except:
+            pass
 
     return None
 
@@ -441,42 +435,47 @@ def parse_block(block: str, idx: int) -> Questao:
     tipo = ""
     enunciado = ""
     resposta = []
+    codigo = []
     capturando_resposta = False
+    capturando_codigo = False
 
     for linha in linhas:
         linha_strip = linha.strip()
 
-        # Detecta pergunta: 1 - [TIPO] texto
         m = re.match(r"\d+\s*-\s*\[(\w+)\]\s*(.+)", linha_strip, re.IGNORECASE)
         if m:
             tipo = m.group(1)
             enunciado = m.group(2)
             capturando_resposta = False
+            capturando_codigo = False
             continue
 
-        # Detecta resposta
+        if re.match(r"(?i)^c[oó]digo\s*:\s*$", linha_strip):
+            capturando_codigo = True
+            capturando_resposta = False
+            continue
+
         m2 = re.match(r"resposta\s*\d+\s*-\s*(.*)", linha_strip, re.IGNORECASE)
         if m2:
             capturando_resposta = True
+            capturando_codigo = False
             if m2.group(1):
                 resposta.append(m2.group(1))
             continue
 
+        if capturando_codigo:
+            codigo.append(linha)
+
         if capturando_resposta:
             resposta.append(linha)
-
-    resposta_texto = "\n".join(resposta).strip()
-
-    # Extrai código se houver
-    codigo = extrair_codigo(resposta_texto)
 
     return Questao(
         idx=idx,
         tipo=normalizar_tipo(tipo),
         enunciado=normalizar_texto(enunciado),
-        resposta_aluno=normalizar_texto(resposta_texto),
+        resposta_aluno=normalizar_texto("\n".join(resposta)),
         resposta_referencia="",
-        codigo=normalizar_texto(codigo),
+        codigo=normalizar_texto("\n".join(codigo)),
         entrada="",
         saida="",
         testes=[],
@@ -705,89 +704,104 @@ def obter_testes_explicitos(q: Questao) -> List[Dict[str, str]]:
     return deduplicar_testes(testes)
 
 
-def gerar_testes_com_llm(q: Questao, quantidade: int = TESTES_ALVO) -> List[Dict[str, str]]:
-    if not USAR_LLM:
-        return []
-
-    schema = {
-        "testes": [
-            {
-                "entrada": "1 2\n",
-                "saida": "3\n",
-                "obs": "caso simples",
-            }
-        ]
-    }
-
+def _gerar_testes_llm_once(q: Questao, quantidade: int):
     prompt = f"""
-Você é um gerador rigoroso de casos de teste para questões de programação.
+Você é um gerador de testes para código Python.
 
-Tarefa:
-- criar entre {max(4, quantidade)} e {quantidade + 2} casos de teste
-- cobrir caso normal, bordas, entradas mínimas, entradas máximas e cenários problemáticos
-- produzir saídas exatas
-- não inventar comportamento fora do enunciado
-
-Tipo da questão: {q.tipo}
+IMPORTANTE:
+- Gere testes REALISTAS que funcionem com input() e print()
+- A saída deve ser EXATAMENTE igual ao que o programa imprime
+- Não invente comportamento fora do código
 
 Enunciado:
 {q.enunciado}
 
-Código de referência ou contexto adicional, se existir:
-{q.codigo or "(não há)"}
+Código:
+{q.codigo or "(não fornecido)"}
 
-Saída esperada, se existir:
-{q.resposta_referencia or "(não há)"}
+Gere exatamente {quantidade} testes.
 
-Retorne APENAS JSON válido neste formato:
+Formato obrigatório (JSON puro):
+{{
+  "testes": [
+    {{
+      "entrada": "123\\n",
+      "saida": "palindromo\\n",
+      "obs": "caso simples"
+    }}
+  ]
+}}
 
-{json.dumps(schema, ensure_ascii=False, indent=2)}
-
-Regras:
-- "entrada" deve ser exatamente o texto que o programa receberia no stdin
-- "saida" deve ser exatamente o texto que o programa deveria imprimir
-- use \\n quando necessário
-- não escreva explicações fora do JSON
+REGRAS:
+- entrada deve terminar com \\n
+- saida deve terminar com \\n
+- não escreva nada fora do JSON
 """
 
     obj = chamar_llm_json(
         [
-            {"role": "system", "content": "Você gera JSON válido e confiável para correção automática."},
+            {"role": "system", "content": "Você gera JSON válido."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.1,
-        max_tokens=1500,
+        max_tokens=1200,
     )
 
     testes = []
+
     if isinstance(obj, dict):
         bruto = obj.get("testes", [])
         if isinstance(bruto, list):
             for item in bruto:
                 if isinstance(item, dict):
-                    testes.append(
-                        {
-                            "entrada": normalizar_texto(str(item.get("entrada", item.get("input", "")))),
-                            "saida": normalizar_texto(str(item.get("saida", item.get("output", "")))),
-                            "obs": normalizar_texto(str(item.get("obs", item.get("descricao", "")))),
-                        }
-                    )
+                    testes.append({
+                        "entrada": item.get("entrada", ""),
+                        "saida": item.get("saida", ""),
+                        "obs": item.get("obs", "")
+                    })
 
-    return deduplicar_testes(testes)[:quantidade]
+    print("\nDEBUG LLM RAW:")
+    print(obj)
+
+    return validar_testes(testes)
+
+def gerar_testes_com_llm(q: Questao, quantidade: int = TESTES_ALVO):
+    if not USAR_LLM:
+        return []
+
+    melhor = []
+
+    for tentativa in range(3):
+        testes = _gerar_testes_llm_once(q, quantidade)
+
+        # guarda o melhor resultado
+        if len(testes) > len(melhor):
+            melhor = testes
+
+        # 🔥 aceita QUALQUER quantidade válida (>=1)
+        if len(testes) >= 1:
+            return testes
+
+    return melhor
 
 
-def obter_testes(q: Questao) -> List[Dict[str, str]]:
+def obter_testes(q: Questao):
     testes = obter_testes_explicitos(q)
-    if len(testes) >= TESTES_ALVO:
-        return testes[:TESTES_ALVO]
 
-    if len(testes) < TESTES_ALVO:
-        gerados = gerar_testes_com_llm(q, quantidade=TESTES_ALVO)
+    gerados = gerar_testes_com_llm(q, quantidade=TESTES_ALVO)
+
+    print("TESTES LLM VALIDADOS:", gerados)
+
+    if gerados:
         testes.extend(gerados)
 
     testes = deduplicar_testes(testes)
-    return testes[: max(TESTES_ALVO, len(testes))]
 
+    # 🔥 fallback só se realmente vazio
+    if not testes:
+       return []
+
+    return testes[:TESTES_ALVO]
 
 # =========================
 # Correção por tipo
@@ -811,6 +825,7 @@ def avaliar_previsao(q: Questao) -> Resultado:
 
     resposta = q.resposta_aluno or ""
     sim = comparar_textos(resposta, saida_correta)
+    ok = sim >= LIMIAR_APROX
 
     if execucao["timeout"]:
         status = "parcial"
@@ -845,9 +860,12 @@ def avaliar_previsao(q: Questao) -> Resultado:
         ],
         testes_executados=[
             {
+                "teste": 1,
                 "entrada": entrada,
                 "saida_esperada": saida_correta,
                 "saida_obtida": execucao["stdout"],
+                "ok": ok,
+                "motivo": "ok" if ok else "saída diferente",
                 "erro_execucao": execucao["erro_execucao"],
             }
         ],
@@ -1147,7 +1165,7 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
         saida_obtida = normalizar_texto(execucao["stdout"])
         saida_esperada_norm = normalizar_texto(saida_esperada)
 
-        sim = comparar_textos(saida_obtida, saida_esperada_norm)
+        sim = comparar_textos(saida_obtida.lower(), saida_esperada_norm.lower())
 
         ok = False
         if execucao["timeout"]:
@@ -1207,6 +1225,21 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
     )
 
 
+
+
+def pergunta_eh_textual_de_correcao(enunciado: str) -> bool:
+    e = sem_acentos((enunciado or "").lower())
+    return any(p in e for p in [
+        "qual e o erro",
+        "como corrigir",
+        "explique o erro",
+        "o que esta errado",
+        "por que",
+    ])
+
+
+
+
 def avaliar_modificacao_com_llm(q: Questao, codigo_aluno: str) -> Resultado:
     """
     Avalia modificação combinando:
@@ -1226,43 +1259,43 @@ def avaliar_modificacao_com_llm(q: Questao, codigo_aluno: str) -> Resultado:
     precisa_saida = exige_saida_no_enunciado(q.enunciado)
 
     prompt = f"""
-Você é um corretor rigoroso de questões de modificação de código.
+    Você é um corretor rigoroso de questões de modificação de código.
 
-Enunciado:
-{q.enunciado}
+    Enunciado:
+    {q.enunciado}
 
-O enunciado pede saída/retorno explícito?
-{ "SIM" if precisa_saida else "NÃO" }
+    O enunciado pede saída/retorno explícito?
+    { "SIM" if precisa_saida else "NÃO" }
 
-Código original de referência/contexto:
-{q.codigo or "(não há)"}
+    Código original de referência/contexto:
+    {q.codigo or "(não há)"}
 
-Código enviado pelo aluno:
-{codigo_aluno or "(vazio)"}
+    Código enviado pelo aluno:
+    {codigo_aluno or "(vazio)"}
 
-Sua tarefa:
-- dizer se a modificação atende ao pedido do enunciado
-- identificar requisitos que foram cumpridos e os que faltaram
-- atribuir nota de 0 a 10
-- use nota decimal quando fizer sentido
-- se o enunciado NÃO pedir print/return, não penalize apenas por ausência de impressão
+    Sua tarefa:
+    - dizer se a modificação atende ao pedido do enunciado
+    - identificar requisitos que foram cumpridos e os que faltaram
+    - atribuir nota de 0 a 10
+    - use nota decimal quando fizer sentido
+    - se o enunciado NÃO pedir print/return, não penalize apenas por ausência de impressão
 
-Retorne APENAS JSON válido com este formato:
+    Retorne APENAS JSON válido com este formato:
 
-{{
-  "nota": 0,
-  "status": "ok|parcial|erro",
-  "cumpre_requisitos": true,
-  "requisitos_atendidos": ["..."],
-  "faltantes": ["..."],
-  "feedback": "texto curto"
-}}
+    {{
+    "nota": 0,
+    "status": "ok|parcial|erro",
+    "cumpre_requisitos": true,
+    "requisitos_atendidos": ["..."],
+    "faltantes": ["..."],
+    "feedback": "texto curto"
+    }}
 
-Regras:
-- seja objetivo
-- seja coerente com o enunciado
-- não avalie estilo, foque na exigência pedida
-"""
+    Regras:
+    - seja objetivo
+    - seja coerente com o enunciado
+    - não avalie estilo, foque na exigência pedida
+    """
     obj = chamar_llm_json(
         [
             {"role": "system", "content": "Você corrige modificações de código e devolve JSON válido."},
@@ -1316,20 +1349,55 @@ Regras:
     return resultado_testes
 
 
+
+
+
+def validar_testes(testes):
+    validos = []
+
+    for t in testes:
+        if not isinstance(t, dict):
+            continue
+
+        entrada = t.get("entrada")
+        saida = t.get("saida")
+
+        # 🔥 Só descarta se for realmente None
+        if entrada is None or saida is None:
+            continue
+
+        entrada = str(entrada)
+        saida = str(saida)
+
+        # 🔥 NÃO usar strip como filtro (isso estava quebrando)
+        if entrada == "" or saida == "":
+            continue
+
+        validos.append({
+            "entrada": entrada,
+            "saida": saida,
+            "obs": str(t.get("obs", ""))
+        })
+
+    return validos
+
 # =========================
 # Dispatcher
 # =========================
 
+
+
 def extrair_resposta_codigo(q: Questao) -> str:
-    """
-    Para questões de código, a resposta do aluno pode vir com markdown,
-    texto e comentários. Aqui priorizamos blocos de código.
-    """
     if not q.resposta_aluno:
         return ""
 
-    codigo = extrair_codigo(q.resposta_aluno)
-    return codigo.strip() or q.resposta_aluno.strip()
+    texto = normalizar_texto(q.resposta_aluno)
+    texto = re.sub(r"(?im)^\s*c[oó]digo\s*:?\s*$", "", texto).strip()
+
+    codigo = extrair_codigo(texto)
+    return codigo.strip() or texto.strip()
+
+
 
 
 def corrigir_questao(q: Questao) -> Resultado:
@@ -1342,8 +1410,15 @@ def corrigir_questao(q: Questao) -> Resultado:
         return avaliar_previsao(q)
 
     if tipo == "correcao":
+        if pergunta_eh_textual_de_correcao(q.enunciado):
+            return avaliar_texto_llm(q)
+
         testes = obter_testes(q)
         codigo_aluno = extrair_resposta_codigo(q)
+
+        if not testes:
+            return avaliar_texto_llm(q)
+
         return avaliar_codigo_por_testes(q, codigo_aluno, testes)
 
     if tipo == "modificacao":
@@ -1353,7 +1428,6 @@ def corrigir_questao(q: Questao) -> Resultado:
     if tipo in {"justificativa", "descritiva"}:
         return avaliar_texto_llm(q)
 
-    # fallback para qualquer tipo desconhecido
     if q.codigo or "```" in (q.enunciado or "") or "input(" in (q.enunciado or ""):
         codigo_aluno = extrair_resposta_codigo(q)
         testes = obter_testes(q)
@@ -1362,7 +1436,6 @@ def corrigir_questao(q: Questao) -> Resultado:
             return res
 
     return avaliar_texto_llm(q)
-
 
 # =========================
 # Relatório
