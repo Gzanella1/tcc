@@ -236,7 +236,9 @@ def parse_block(block: str, idx: int) -> Questao:
                 continue
             resposta.append(linha)
 
-    enunciado = normalizar_texto("\n".join(enunciado_linhas))
+    #enunciado = normalizar_texto("\n".join(enunciado_linhas))
+    enunciado_bruto = "\n".join(enunciado_linhas)
+    enunciado = normalizar_texto(enunciado_bruto)
 
     return Questao(
         idx=idx,
@@ -245,7 +247,9 @@ def parse_block(block: str, idx: int) -> Questao:
         resposta_aluno=normalizar_texto("\n".join(resposta)),
         resposta_referencia="",
         codigo=normalizar_texto("\n".join(codigo)),
-        entrada="",
+        #entrada="",
+        #entrada=extrair_entradas(enunciado),
+        entrada=extrair_entradas(enunciado_bruto),
         saida="",
         testes=[],
         extras={},
@@ -327,3 +331,11 @@ def carregar_questoes(path: Path) -> List[Questao]:
         return [parse_block(blocos[0], 1)]
 
     return [parse_block(bloco, i + 1) for i, bloco in enumerate(blocos)]
+
+import re
+
+def extrair_entradas(enunciado: str) -> str:
+    entradas = re.findall(r"Entrada:\s*(.*)", enunciado)
+    return "\n".join(entradas) + "\n" if entradas else ""
+
+

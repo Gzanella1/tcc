@@ -19,7 +19,7 @@ Fluxo:
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from config import LIMIAR_APROX
 from execution.runner import (
@@ -28,7 +28,41 @@ from execution.runner import (
     verificar_sintaxe_python,
 )
 from models.questao import Questao, Resultado
-from utils.text import comparar_textos, normalizar_texto
+from utils.text import (
+    comparar_textos,
+    extrair_prompts_input,
+    normalizar_texto,
+    remover_prompts_saida,
+)
+
+
+def _detectar_erro_execucao(execucao: Dict) -> Tuple[bool, str]:
+    """
+    Detecta erro de execução mesmo que o runner não preencha
+    corretamente o campo erro_execucao.
+    """
+    timeout = bool(execucao.get("timeout"))
+    erro_exec = str(execucao.get("erro_execucao", "") or "").strip()
+    stderr = normalizar_texto(execucao.get("stderr", ""))
+
+    if timeout:
+        return True, "timeout"
+
+    if erro_exec:
+        return True, erro_exec
+
+    if int(execucao.get("returncode", 0) or 0) != 0:
+        if stderr:
+            primeira_linha = stderr.splitlines()[0].strip()
+            return True, primeira_linha or "erro de execução"
+        return True, "erro de execução"
+
+    if stderr:
+        primeira_linha = stderr.splitlines()[0].strip()
+        if "Traceback" in stderr or "Error" in stderr or "EOFError" in stderr:
+            return True, primeira_linha or "erro de execução"
+
+    return False, ""
 
 
 def avaliar(
@@ -55,18 +89,15 @@ def avaliar(
 
     # ── 3. Sem testes ─────────────────────────────────────────────────────────
     if not testes:
-        execucao     = executar_codigo_python_sem_entrada(codigo_aluno)
+        execucao = executar_codigo_python_sem_entrada(codigo_aluno)
+        erro_exec, motivo_exec = _detectar_erro_execucao(execucao)
         saida_obtida = normalizar_texto(execucao["stdout"])
 
-        if execucao["timeout"]:
+        if erro_exec:
             return Resultado(
                 idx=q.idx, tipo=q.tipo, nota=0.0, status="erro",
-                feedback="O código entrou em timeout.",
-            )
-        if execucao["erro_execucao"]:
-            return Resultado(
-                idx=q.idx, tipo=q.tipo, nota=0.0, status="erro",
-                feedback=f"Erro ao executar o código: {execucao['erro_execucao']}",
+                feedback=f"Erro ao executar o código: {motivo_exec}",
+                detalhes=[normalizar_texto(execucao.get("stderr", ""))],
             )
 
         return Resultado(
@@ -76,26 +107,32 @@ def avaliar(
         )
 
     # ── 4. Com testes ─────────────────────────────────────────────────────────
-    total     = len(testes)
-    passou    = 0
-    detalhes: List[str]  = []
+    total = len(testes)
+    passou = 0
+    detalhes: List[str] = []
     execucoes: List[Dict] = []
 
-    for i, teste in enumerate(testes, start=1):
-        entrada          = teste.get("entrada", "")
-        saida_esperada   = teste.get("saida",   "")
-        obs              = teste.get("obs",     "")
+    # Extrai prompts do input() do código-base (q.codigo) uma única vez,
+    # pois são os mesmos para todos os testes.
+    prompts_input = extrair_prompts_input(q.codigo or "")
 
-        execucao             = executar_codigo_python(codigo_aluno, entrada, timeout=3)
-        saida_obtida         = normalizar_texto(execucao["stdout"])
-        saida_esperada_norm  = normalizar_texto(saida_esperada)
+    for i, teste in enumerate(testes, start=1):
+        entrada = teste.get("entrada", "")
+        saida_esperada = teste.get("saida", "")
+        obs = teste.get("obs", "")
+
+        execucao = executar_codigo_python(codigo_aluno, entrada, timeout=3)
+
+        erro_exec, motivo_exec = _detectar_erro_execucao(execucao)
+
+        # Remove apenas prompts provenientes de input() antes de comparar.
+        saida_obtida = remover_prompts_saida(normalizar_texto(execucao["stdout"]), prompts_input)
+        saida_esperada_norm = remover_prompts_saida(normalizar_texto(saida_esperada), prompts_input)
 
         sim = comparar_textos(saida_obtida.lower(), saida_esperada_norm.lower())
 
-        if execucao["timeout"]:
-            ok, motivo = False, "timeout"
-        elif execucao["erro_execucao"]:
-            ok, motivo = False, execucao["erro_execucao"]
+        if erro_exec:
+            ok, motivo = False, motivo_exec
         elif sim >= LIMIAR_APROX:
             ok, motivo = True, "ok"
         else:
@@ -105,16 +142,16 @@ def avaliar(
             passou += 1
 
         execucoes.append({
-            "teste":          i,
-            "entrada":        entrada,
+            "teste": i,
+            "entrada": entrada,
             "saida_esperada": saida_esperada_norm,
-            "saida_obtida":   saida_obtida,
-            "obs":            obs,
-            "ok":             ok,
-            "motivo":         motivo,
-            "stderr":         normalizar_texto(execucao["stderr"]),
-            "returncode":     execucao["returncode"],
-            "timeout":        execucao["timeout"],
+            "saida_obtida": saida_obtida,
+            "obs": obs,
+            "ok": ok,
+            "motivo": motivo,
+            "stderr": normalizar_texto(execucao["stderr"]),
+            "returncode": execucao["returncode"],
+            "timeout": execucao["timeout"],
         })
 
         detalhes.append(
@@ -126,11 +163,11 @@ def avaliar(
     nota = (passou / total) * 10 if total else 0.0
 
     if passou == total:
-        status, feedback = "ok",      "Todos os testes passaram."
+        status, feedback = "ok", "Todos os testes passaram."
     elif passou >= max(1, total // 2):
         status, feedback = "parcial", f"{passou}/{total} testes passaram."
     else:
-        status, feedback = "erro",    f"Apenas {passou}/{total} testes passaram."
+        status, feedback = "erro", f"Apenas {passou}/{total} testes passaram."
 
     return Resultado(
         idx=q.idx,

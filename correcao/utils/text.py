@@ -9,11 +9,12 @@ Funções utilitárias para normalização, comparação e tokenização de text
 
 from __future__ import annotations
 
+import ast
 import difflib
 import json
 import re
 import unicodedata
-from typing import List
+from typing import Iterable, List
 
 
 def sem_acentos(texto: str) -> str:
@@ -33,7 +34,7 @@ def normalizar_texto(texto: str) -> str:
     """Normaliza quebras de linha e remove espaços em branco desnecessários."""
     if texto is None:
         return ""
-    texto = texto.replace("\r\n", "\n").replace("\r", "\n")
+    texto = str(texto).replace("\r\n", "\n").replace("\r", "\n")
     linhas = [ln.rstrip() for ln in texto.split("\n")]
     while linhas and not linhas[0].strip():
         linhas.pop(0)
@@ -51,7 +52,7 @@ def compactar_texto(texto: str) -> str:
 
 def tokenizar(texto: str) -> List[str]:
     """Divide o texto em tokens alfanuméricos normalizados."""
-    texto = sem_acentos(texto.lower())
+    texto = sem_acentos((texto or "").lower())
     return re.findall(r"[a-z0-9_]+", texto)
 
 
@@ -128,7 +129,7 @@ def exige_saida_no_enunciado(texto: str) -> bool:
     """
     t = sem_acentos((texto or "").lower())
     padroes = [
-        r"\bprint(?:e|ar|e)?\b",
+        r"\bprint(?:e|ar|em|ar)?\b",
         r"\bmostre\b",
         r"\bimprima\b",
         r"\bexiba\b",
@@ -143,4 +144,121 @@ def exige_saida_no_enunciado(texto: str) -> bool:
 
 def codigo_tem_input(codigo: str) -> bool:
     """Verifica se um trecho de código Python usa a função input()."""
-    return "input(" in (codigo or "")
+    if not codigo:
+        return False
+    return bool(re.search(r"\binput\s*\(", codigo))
+
+
+def _normalizar_prompt(prompt: str) -> str:
+    """Gera variantes razoáveis do prompt para remoção segura."""
+    prompt = normalizar_texto(prompt)
+    if not prompt:
+        return ""
+    return prompt
+
+
+def _unique(seq: Iterable[str]) -> List[str]:
+    vistos = set()
+    saida: List[str] = []
+    for item in seq:
+        if not item:
+            continue
+        if item in vistos:
+            continue
+        vistos.add(item)
+        saida.append(item)
+    return saida
+
+
+def extrair_prompts_input(codigo: str) -> List[str]:
+    """
+    Extrai apenas os prompts literais passados para input("...").
+
+    A função é propositalmente conservadora:
+    - só coleta argumentos literais do input()
+    - não tenta adivinhar prompts montados dinamicamente
+    - não coleta strings de print(), comentário, etc.
+    """
+    if not codigo:
+        return []
+
+    try:
+        arvore = ast.parse(codigo)
+    except SyntaxError:
+        return []
+
+    prompts: List[str] = []
+
+    for node in ast.walk(arvore):
+        if not isinstance(node, ast.Call):
+            continue
+
+        func = node.func
+        if not isinstance(func, ast.Name) or func.id != "input":
+            continue
+
+        if not node.args:
+            continue
+
+        arg0 = node.args[0]
+
+        if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+            prompts.append(_normalizar_prompt(arg0.value))
+            continue
+
+        # Casos simples de f-string literal.
+        if isinstance(arg0, ast.JoinedStr):
+            partes: List[str] = []
+            ok = True
+            for parte in arg0.values:
+                if isinstance(parte, ast.Constant) and isinstance(parte.value, str):
+                    partes.append(parte.value)
+                else:
+                    ok = False
+                    break
+            if ok:
+                prompts.append(_normalizar_prompt("".join(partes)))
+
+    return _unique([p for p in prompts if p])
+
+
+def remover_prompts_saida(texto: str, prompts_input: Iterable[str]) -> str:
+    """
+    Remove da saída apenas os prompts capturados por input().
+
+    Importante:
+    - não remove outras mensagens do programa
+    - não remove o que vem depois do prompt na mesma linha
+    - é útil para comparar saída esperada e saída real quando o LLM
+      coloca o texto do input() na resposta esperada
+    """
+    if texto is None:
+        return ""
+    texto = normalizar_texto(texto)
+
+    prompts = []
+    if isinstance(prompts_input, str):
+        prompts = [prompts_input]
+    else:
+        prompts = list(prompts_input or [])
+
+    prompts = _unique([_normalizar_prompt(p) for p in prompts if p])
+    if not prompts:
+        return texto
+
+    for prompt in sorted(prompts, key=len, reverse=True):
+        variants = _unique([
+            prompt,
+            prompt.rstrip(),
+            prompt.strip(),
+        ])
+        for variante in variants:
+            if not variante:
+                continue
+            # Remove apenas a ocorrência literal do prompt.
+            texto = texto.replace(variante, "")
+
+    # Limpeza leve após a remoção.
+    texto = re.sub(r"[ \t]+\n", "\n", texto)
+    texto = re.sub(r"\n{3,}", "\n\n", texto)
+    return normalizar_texto(texto)

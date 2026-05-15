@@ -51,7 +51,8 @@ def executar_codigo_python(
         timeout      : True se o processo excedeu o tempo limite
         erro_execucao: descrição do erro, se houver
     """
-    codigo  = normalizar_texto(codigo)
+    #codigo  = normalizar_texto(codigo)
+    codigo = codigo
     entrada = entrada if entrada is not None else ""
 
     resultado: Dict[str, Any] = {

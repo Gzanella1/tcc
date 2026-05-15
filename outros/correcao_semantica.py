@@ -53,8 +53,8 @@ from typing import Any, Dict, List, Optional, Tuple
 # Configuração
 # =========================
 
-ARQUIVO_ENTRADA = Path(os.getenv("ARQUIVO_ENTRADA", "conteudo/perguntasGeradas.txt"))
-ARQUIVO_SAIDA = Path(os.getenv("ARQUIVO_SAIDA", "conteudo/correcao.txt"))
+ARQUIVO_ENTRADA = Path(os.getenv("ARQUIVO_ENTRADA", "../conteudo/perguntasGeradas.txt"))
+ARQUIVO_SAIDA = Path(os.getenv("ARQUIVO_SAIDA", "../conteudo/correcao.txt"))
 
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:1234/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "qwen/qwen3-vl-4b")
@@ -241,6 +241,11 @@ def exige_saida_no_enunciado(texto: str) -> bool:
     ]
     return any(re.search(p, t) for p in padroes)
 
+
+
+
+def codigo_tem_input(codigo: str) -> bool:
+    return "input(" in (codigo or "")
 
 # =========================
 # Leitura e parsing
@@ -704,14 +709,28 @@ def obter_testes_explicitos(q: Questao) -> List[Dict[str, str]]:
     return deduplicar_testes(testes)
 
 
+def codigo_tem_input(codigo: str) -> bool:
+    return "input(" in (codigo or "")
+
+
 def _gerar_testes_llm_once(q: Questao, quantidade: int):
+    usa_input = codigo_tem_input(q.codigo)
+
+    if usa_input:
+        regra_input = "- O código usa input(), então gere entradas realistas com input()."
+        regra_entrada = "- entrada deve conter dados válidos e terminar com \\n"
+    else:
+        regra_input = "- O código NÃO usa input(), então NÃO gere entradas."
+        regra_entrada = '- entrada deve ser "" (string vazia)'
+
     prompt = f"""
 Você é um gerador de testes para código Python.
 
 IMPORTANTE:
-- Gere testes REALISTAS que funcionem com input() e print()
+{regra_input}
 - A saída deve ser EXATAMENTE igual ao que o programa imprime
 - Não invente comportamento fora do código
+- Respeite rigorosamente o funcionamento real do código
 
 Enunciado:
 {q.enunciado}
@@ -725,22 +744,22 @@ Formato obrigatório (JSON puro):
 {{
   "testes": [
     {{
-      "entrada": "123\\n",
-      "saida": "palindromo\\n",
-      "obs": "caso simples"
+      "entrada": "",
+      "saida": "saida esperada\\n",
+      "obs": "descrição do caso"
     }}
   ]
 }}
 
 REGRAS:
-- entrada deve terminar com \\n
+{regra_entrada}
 - saida deve terminar com \\n
 - não escreva nada fora do JSON
 """
 
     obj = chamar_llm_json(
         [
-            {"role": "system", "content": "Você gera JSON válido."},
+            {"role": "system", "content": "Você gera testes válidos e retorna apenas JSON puro."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.1,
@@ -754,16 +773,26 @@ REGRAS:
         if isinstance(bruto, list):
             for item in bruto:
                 if isinstance(item, dict):
+                    entrada = item.get("entrada", "")
+                    saida = item.get("saida", "")
+
+                    # 🔥 valida coerência com uso de input
+                    if not usa_input:
+                        entrada = ""  # força vazio se não usa input
+
                     testes.append({
-                        "entrada": item.get("entrada", ""),
-                        "saida": item.get("saida", ""),
-                        "obs": item.get("obs", "")
+                        "entrada": str(entrada),
+                        "saida": str(saida),
+                        "obs": str(item.get("obs", ""))
                     })
 
     print("\nDEBUG LLM RAW:")
     print(obj)
 
     return validar_testes(testes)
+
+
+
 
 def gerar_testes_com_llm(q: Questao, quantidade: int = TESTES_ALVO):
     if not USAR_LLM:
@@ -788,7 +817,10 @@ def gerar_testes_com_llm(q: Questao, quantidade: int = TESTES_ALVO):
 def obter_testes(q: Questao):
     testes = obter_testes_explicitos(q)
 
-    gerados = gerar_testes_com_llm(q, quantidade=TESTES_ALVO)
+    if codigo_tem_input(q.codigo):
+        gerados = gerar_testes_com_llm(q, quantidade=TESTES_ALVO)
+    else:
+        gerados = []
 
     print("TESTES LLM VALIDADOS:", gerados)
 
@@ -1117,9 +1149,10 @@ Retorne APENAS JSON válido neste formato:
 
 
 
-
-
 def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[str, str]]) -> Resultado:
+    # =========================
+    # 1. valida código vazio
+    # =========================
     if not codigo_aluno.strip():
         return Resultado(
             idx=q.idx,
@@ -1130,6 +1163,9 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
             detalhes=["Nenhum código foi fornecido pelo aluno."],
         )
 
+    # =========================
+    # 2. valida sintaxe
+    # =========================
     ok_sintaxe, erro_sintaxe = verificar_sintaxe_python(codigo_aluno)
     if not ok_sintaxe:
         return Resultado(
@@ -1141,16 +1177,44 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
             detalhes=["O código não compila em Python."],
         )
 
+    # =========================
+    # 3. CASO SEM TESTES (🔥 CORREÇÃO PRINCIPAL)
+    # =========================
     if not testes:
+        execucao = executar_codigo_python_sem_entrada(codigo_aluno)
+
+        saida_obtida = normalizar_texto(execucao["stdout"])
+
+        if execucao["timeout"]:
+            return Resultado(
+                idx=q.idx,
+                tipo=q.tipo,
+                nota=0.0,
+                status="erro",
+                feedback="O código entrou em timeout.",
+            )
+
+        if execucao["erro_execucao"]:
+            return Resultado(
+                idx=q.idx,
+                tipo=q.tipo,
+                nota=0.0,
+                status="erro",
+                feedback=f"Erro ao executar o código: {execucao['erro_execucao']}",
+            )
+
         return Resultado(
             idx=q.idx,
             tipo=q.tipo,
-            nota=0.0,
-            status="erro",
-            feedback="Não foi possível gerar nem localizar casos de teste confiáveis.",
-            detalhes=["Sem testes para validar a solução."],
+            nota=10.0,
+            status="ok",
+            feedback="Código executado corretamente (sem necessidade de testes com input).",
+            detalhes=[f"Saída obtida:\n{saida_obtida if saida_obtida else '(vazia)'}"],
         )
 
+    # =========================
+    # 4. EXECUÇÃO COM TESTES
+    # =========================
     total = len(testes)
     passou = 0
     detalhes = []
@@ -1167,7 +1231,6 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
 
         sim = comparar_textos(saida_obtida.lower(), saida_esperada_norm.lower())
 
-        ok = False
         if execucao["timeout"]:
             ok = False
             motivo = "timeout"
@@ -1178,6 +1241,7 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
             ok = True
             motivo = "ok"
         else:
+            ok = False
             motivo = "saída diferente"
 
         if ok:
@@ -1203,7 +1267,11 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
             f"(similaridade={sim:.3f}, motivo={motivo})"
         )
 
+    # =========================
+    # 5. cálculo da nota
+    # =========================
     nota = (passou / total) * 10 if total else 0.0
+
     if passou == total:
         status = "ok"
         feedback = "Todos os testes passaram."
@@ -1223,8 +1291,6 @@ def avaliar_codigo_por_testes(q: Questao, codigo_aluno: str, testes: List[Dict[s
         detalhes=detalhes,
         testes_executados=execucoes,
     )
-
-
 
 
 def pergunta_eh_textual_de_correcao(enunciado: str) -> bool:
@@ -1259,43 +1325,75 @@ def avaliar_modificacao_com_llm(q: Questao, codigo_aluno: str) -> Resultado:
     precisa_saida = exige_saida_no_enunciado(q.enunciado)
 
     prompt = f"""
-    Você é um corretor rigoroso de questões de modificação de código.
+        Você é um corretor rigoroso de questões de MODIFICAÇÃO de código Python.
 
-    Enunciado:
-    {q.enunciado}
+        =========================
+        CONTEXTO
+        =========================
 
-    O enunciado pede saída/retorno explícito?
-    { "SIM" if precisa_saida else "NÃO" }
+        Enunciado:
+        {q.enunciado}
 
-    Código original de referência/contexto:
-    {q.codigo or "(não há)"}
+        O enunciado pede saída/retorno explícito?
+        { "SIM" if precisa_saida else "NÃO" }
 
-    Código enviado pelo aluno:
-    {codigo_aluno or "(vazio)"}
+        Código original:
+        {q.codigo or "(não há)"}
 
-    Sua tarefa:
-    - dizer se a modificação atende ao pedido do enunciado
-    - identificar requisitos que foram cumpridos e os que faltaram
-    - atribuir nota de 0 a 10
-    - use nota decimal quando fizer sentido
-    - se o enunciado NÃO pedir print/return, não penalize apenas por ausência de impressão
+        Código do aluno:
+        {codigo_aluno or "(vazio)"}
 
-    Retorne APENAS JSON válido com este formato:
+        =========================
+        TAREFA
+        =========================
 
-    {{
-    "nota": 0,
-    "status": "ok|parcial|erro",
-    "cumpre_requisitos": true,
-    "requisitos_atendidos": ["..."],
-    "faltantes": ["..."],
-    "feedback": "texto curto"
-    }}
+        1. Extraia os REQUISITOS explícitos do enunciado
+        2. Para cada requisito:
+        - verifique se foi atendido no código do aluno
+        - justifique com base no código (não invente)
+        3. Identifique:
+        - o que foi atendido corretamente
+        - o que está incompleto
+        - o que está incorreto
 
-    Regras:
-    - seja objetivo
-    - seja coerente com o enunciado
-    - não avalie estilo, foque na exigência pedida
-    """
+        =========================
+        REGRAS IMPORTANTES
+        =========================
+
+        - NÃO invente comportamento que não existe no código
+        - NÃO avalie estilo (nome de variável, formatação, etc.)
+        - Foque APENAS no que o enunciado pede
+        - Se o enunciado NÃO pede print/return:
+        NÃO penalize ausência de saída
+
+        =========================
+        CRITÉRIO DE NOTA
+        =========================
+
+        - 10 → todos os requisitos atendidos corretamente
+        - 7 a 9 → maioria correta, pequenos problemas
+        - 4 a 6 → parcialmente correto
+        - 0 a 3 → incorreto ou não atende o principal
+
+        =========================
+        FORMATO DE SAÍDA (JSON)
+        =========================
+
+        Retorne APENAS JSON válido:
+
+        {{
+        "nota": 0,
+        "status": "ok|parcial|erro",
+        "cumpre_requisitos": true,
+        "requisitos_identificados": ["..."],
+        "requisitos_atendidos": ["..."],
+        "faltantes": ["..."],
+        "feedback": "explicação curta e objetiva"
+        }}
+        """
+
+
+
     obj = chamar_llm_json(
         [
             {"role": "system", "content": "Você corrige modificações de código e devolve JSON válido."},

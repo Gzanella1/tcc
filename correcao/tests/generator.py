@@ -24,6 +24,7 @@ def deduplicar_testes(testes: List[Dict[str, str]]) -> List[Dict[str, str]]:
     """Remove testes com entradas duplicadas, mantendo a primeira ocorrência."""
     vistos: set = set()
     saida: List[Dict[str, str]] = []
+
     for t in testes:
         entrada = normalizar_texto(str(t.get("entrada", "")))
         if entrada in vistos:
@@ -34,38 +35,49 @@ def deduplicar_testes(testes: List[Dict[str, str]]) -> List[Dict[str, str]]:
             "saida":   normalizar_texto(str(t.get("saida", ""))),
             "obs":     normalizar_texto(str(t.get("obs", ""))),
         })
+
     return saida
 
 
 # ─── Validação ───────────────────────────────────────────────────────────────
 
-def validar_testes(testes: List[Dict]) -> List[Dict[str, str]]:
+def validar_testes(testes: List[Dict], requer_input: bool = False) -> List[Dict[str, str]]:
     """
-    Filtra testes inválidos (campos None ou strings vazias).
-    Não usa strip() como critério para não descartar entradas com espaços.
+    Filtra testes inválidos.
+
+    Regras:
+    - entrada e saida não podem ser None
+    - saida não pode ser vazia
+    - se o código usa input(), entrada vazia é descartada
     """
     validos = []
+
     for t in testes:
         if not isinstance(t, dict):
             continue
 
         entrada = t.get("entrada")
-        saida   = t.get("saida")
+        saida = t.get("saida")
 
         if entrada is None or saida is None:
             continue
 
-        entrada = str(entrada)
-        saida   = str(saida)
+        entrada = normalizar_texto(str(entrada))
+        saida = normalizar_texto(str(saida))
+        obs = normalizar_texto(str(t.get("obs", "")))
 
-        if entrada == "" or saida == "":
+        if saida == "":
+            continue
+
+        if requer_input and entrada == "":
             continue
 
         validos.append({
             "entrada": entrada,
-            "saida":   saida,
-            "obs":     str(t.get("obs", "")),
+            "saida": saida,
+            "obs": obs,
         })
+
     return validos
 
 
@@ -79,20 +91,25 @@ def _gerar_testes_llm_once(q: Questao, quantidade: int) -> List[Dict[str, str]]:
     usa_input = codigo_tem_input(q.codigo)
 
     if usa_input:
-        regra_input  = "- O código usa input(), então gere entradas realistas com input()."
+        regra_input = "- O código usa input(), então gere entradas realistas com dados para input()."
         regra_entrada = "- entrada deve conter dados válidos e terminar com \\n"
     else:
-        regra_input  = "- O código NÃO usa input(), então NÃO gere entradas."
+        regra_input = "- O código NÃO usa input(), então NÃO gere entradas."
         regra_entrada = '- entrada deve ser "" (string vazia)'
 
     prompt = f"""
 Você é um gerador de testes para código Python.
 
+Tipo da questão:
+{q.tipo}
+
 IMPORTANTE:
 {regra_input}
-- A saída deve ser EXATAMENTE igual ao que o programa imprime
-- Não invente comportamento fora do código
-- Respeite rigorosamente o funcionamento real do código
+- A saída deve refletir o comportamento correto do programa conforme o ENUNCIADO
+- Se o enunciado pedir uma funcionalidade nova (modificação), considere o programa FINAL correto
+- Se o enunciado pedir saída adicional, ela deve aparecer na saída esperada
+- Não invente comportamento fora do enunciado
+- Respeite rigorosamente o funcionamento real esperado
 
 Enunciado:
 {q.enunciado}
@@ -122,7 +139,7 @@ REGRAS:
     obj = chamar_llm_json(
         [
             {"role": "system", "content": "Você gera testes válidos e retorna apenas JSON puro."},
-            {"role": "user",   "content": prompt},
+            {"role": "user", "content": prompt},
         ],
         temperature=0.1,
         max_tokens=1200,
@@ -136,21 +153,18 @@ REGRAS:
             for item in bruto:
                 if isinstance(item, dict):
                     entrada = item.get("entrada", "")
-                    saida   = item.get("saida",   "")
+                    saida = item.get("saida", "")
 
                     if not usa_input:
-                        entrada = ""  # força vazio se não usa input
+                        entrada = ""
 
                     testes.append({
                         "entrada": str(entrada),
-                        "saida":   str(saida),
-                        "obs":     str(item.get("obs", "")),
+                        "saida": str(saida),
+                        "obs": str(item.get("obs", "")),
                     })
 
-    print("\nDEBUG LLM RAW:")
-    print(obj)
-
-    return validar_testes(testes)
+    return validar_testes(testes, requer_input=usa_input)
 
 
 def gerar_testes_com_llm(q: Questao, quantidade: int = TESTES_ALVO) -> List[Dict[str, str]]:
@@ -181,14 +195,28 @@ def gerar_testes_com_llm(q: Questao, quantidade: int = TESTES_ALVO) -> List[Dict
 def obter_testes_explicitos(q: Questao) -> List[Dict[str, str]]:
     """Retorna os testes declarados explicitamente no enunciado ou nos campos da questão."""
     testes: List[Dict[str, str]] = []
-    if q.entrada or q.saida:
-        testes.append({
-            "entrada": q.entrada,
-            "saida":   q.saida,
-            "obs":     "Caso explícito do enunciado",
-        })
+
+    entrada = normalizar_texto(str(q.entrada or ""))
+    saida = normalizar_texto(str(q.saida or ""))
+
+    if saida:
+        if codigo_tem_input(q.codigo):
+            if entrada != "":
+                testes.append({
+                    "entrada": entrada,
+                    "saida": saida,
+                    "obs": "Caso explícito do enunciado",
+                })
+        else:
+            testes.append({
+                "entrada": entrada,
+                "saida": saida,
+                "obs": "Caso explícito do enunciado",
+            })
+
     if q.testes:
         testes.extend(q.testes)
+
     return deduplicar_testes(testes)
 
 
@@ -207,11 +235,10 @@ def obter_testes(q: Questao) -> List[Dict[str, str]]:
     else:
         gerados = []
 
-    print("TESTES LLM VALIDADOS:", gerados)
-
     if gerados:
         testes.extend(gerados)
 
+    testes = validar_testes(testes, requer_input=codigo_tem_input(q.codigo))
     testes = deduplicar_testes(testes)
 
     if not testes:

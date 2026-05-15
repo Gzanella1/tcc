@@ -1,0 +1,101 @@
+============================================================
+Exercício gerado com base na sua resposta da questão 1: Questão 1
+============================================================
+
+1 - [DESCRITIVA] Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando cada parte do programa.
+
+Seu código:
+----------------------------------------
+texto = input("Digite uma frase: ").lower()
+vogais = "aeiou"
+contador = 0
+
+for letra in texto:
+    if letra in vogais:
+        contador += 1
+
+print("Quantidade de vogais:", contador)
+----------------------------------------
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 2: Questão 2
+============================================================
+
+2 - [MODIFICACAO] Adicione uma funcionalidade que permita o usuário escolher um intervalo personalizado (início e fim) e imprima todos os números primos nesse intervalo, em vez do intervalo fixo de 2 a 50.
+
+Seu código:
+----------------------------------------
+for num in range(2, 51):
+    primo = True
+
+    for i in range(2, num):
+        if num % i == 0:
+            primo = False
+            break
+
+    if primo:
+        print(num)
+----------------------------------------
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 3: Questão 3
+============================================================
+
+3 - [CORRECAO] O código calcula a soma de todos os elementos da matriz, mas pode apresentar um erro lógico se houver uma condição de borda não considerada. Qual é a possibilidade de erro que o aluno deveria verificar?
+
+Seu código:
+----------------------------------------
+matriz = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+]
+
+soma = 0
+
+for linha in matriz:
+    for elemento in linha:
+        soma += elemento
+
+print("Soma total:", soma)
+----------------------------------------
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 4: Questão 4
+============================================================
+
+4 - [PREVISAO] Se o usuário digitar a palavra "abacaxi", qual será a saída esperada do programa? Considere também o caso em que a entrada for uma palavra vazia.
+
+Seu código:
+----------------------------------------
+texto = input("Digite uma palavra: ")
+invertida = ""
+
+for i in range(len(texto)-1, -1, -1):
+    invertida += texto[i]
+
+print("Invertida:", invertida)
+----------------------------------------
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 5: Questão 5
+============================================================
+
+5 - [JUSTIFICATIVA] Por que o aluno escolheu usar `numero[::-1]` para inverter a string, em vez de outra abordagem como um laço de repetição ou conversão para lista?
+
+Seu código:
+----------------------------------------
+numero = input("Digite um número: ")
+
+invertido = numero[::-1]
+
+if numero == invertido:
+    print("É palíndromo")
+else:
+    print("Não é palíndromo")
+----------------------------------------
+

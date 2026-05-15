@@ -1,55 +1,150 @@
+============================================================
+Exercício gerado com base na sua resposta da questão 1: Questão 1
+============================================================
 
-========== Exercicio gerado com base na sua resposta da questão 1 ==========
+1 - [JUSTIFICATIVA] Por que você escolheu converter a entrada do usuário para minúsculas antes de contar as vogais?
 
-Questão 1
+Seu código:
+----------------------------------------
+texto = input("Digite uma frase: ").lower()
+vogais = "aeiou"
+contador = 0
 
-1 - [DESCRITIVA] Qual é o propósito do código fornecido e como ele funciona passo a passo?
- 
- 
- 
- 
- 
+for letra in texto:
+    if letra in vogais:
+        contador += 1
 
-========== Exercicio gerado com base na sua resposta da questão 2 ==========
+print("Quantidade de vogais:", contador)
+----------------------------------------
 
-Questão 2
+resposta 1 -
+Converter para minúsculas garante que:
+O programa funcione corretamente independente de maiúsculas/minúsculas
+Evita erros de contagem
+Torna a verificação mais simples (não precisa checar "AEIOU" também)
 
-2 - [MODIFICACAO] Como modificar o código para imprimir também os números que são divisíveis por 2, mas apenas se forem primos?
- 
- 
- 
- 
- 
+============================================================
+Exercício gerado com base na sua resposta da questão 2: Questão 2
+============================================================
 
-========== Exercicio gerado com base na sua resposta da questão 3 ==========
+2 - [CORRECAO] O código imprime números primos entre 2 e 50, mas há um erro lógico: 
+o número 2 não é detectado como primo. Por que isso acontece?
 
-Questão 3
+Seu código:
+----------------------------------------
+for num in range(2, 51):
+    primo = True
 
-3 - [PREVISAO] Qual será o valor impresso na saída do programa após a execução do código fornecido?
- 
- 
- 
- 
- 
+    for i in range(2, num):
+        if num % i == 0:
+            primo = False
+            break
 
-========== Exercicio gerado com base na sua resposta da questão 4 ==========
+    if primo:
+        print(num)
+----------------------------------------
 
-Questão 4
+resposta 2 - 
+Na verdade, o código não possui erro em relação ao número 2.
+Isso acontece porque, para num = 2, ou seja, um intervalo vazio.
+Como o laço interno não executa nenhuma vez, a variável primo permanece como True, e o número 2 é corretamente identificado como primo.
+Portanto, o número 2 é detectado corretamente como primo nesse código.imo
 
-4 - [CORRECAO] O código apresentado inverte corretamente a string digitada? Se sim, explique por que; se não, identifique o erro e como corrigir.
- 
- 
- 
- 
- 
+============================================================
+Exercício gerado com base na sua resposta da questão 3: Questão 3
+============================================================
 
-========== Exercicio gerado com base na sua resposta da questão 5 ==========
+3 - [DESCRITIVA] Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando cada parte do processo.
 
-Questão 5
+Seu código:
+----------------------------------------
+matriz = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+]
 
-5 - [JUSTIFICATIVA] Por que o código não funciona corretamente para números que contêm zeros no início ou fim, como '1001'?
- 
- 
- 
- 
- 
+soma = 0
+
+for linha in matriz:
+    for elemento in linha:
+        soma += elemento
+
+print("Soma total:", soma)
+----------------------------------------
+
+resposta 3 - 
+
+O código calcula a soma de todos os elementos de uma matriz 3x3.
+Primeiro, é criada uma matriz com três listas internas, cada uma representando uma linha com três números.
+Em seguida, a variável soma é inicializada com valor 0, que servirá para acumular os valores.
+Depois, o programa percorre cada linha da matriz usando um laço for. Para cada linha, ele percorre todos os seus elementos com outro laço for.
+A cada elemento visitado, seu valor é somado à variável soma.
+Ao final da execução dos dois laços, todos os elementos da matriz terão sido somados, e o resultado total é exibido com um print.
+
+============================================================
+Exercício gerado com base na sua resposta da questão 4: Questão 4
+============================================================
+
+4 - [PREVISAO] Se o usuário digitar "Python" como entrada, qual será a saída esperada do programa? 
+Considere também o caso em que a entrada for "a" (caso de borda).
+
+Seu código:
+----------------------------------------
+texto = input("Digite uma palavra: ")
+invertida = ""
+
+for i in range(len(texto)-1, -1, -1):
+    invertida += texto[i]
+
+print("Invertida:", invertida)
+----------------------------------------
+
+resposta 4 - 
+
+Invertida: nohtyP
+Invertida: cba
+
+============================================================
+Exercício gerado com base na sua resposta da questão 5: Questão 5
+============================================================
+
+5 - [MODIFICACAO] Adicione uma funcionalidade que verifique se o número é palíndromo considerando apenas os dígitos 
+(ignorando sinais e zeros à esquerda), e exiba a versão invertida do número como saída adicional.
+
+Seu código:
+----------------------------------------
+numero = input("Digite um número: ")
+
+invertido = numero[::-1]
+
+if numero == invertido:
+    print("É palíndromo")
+else:
+    print("Não é palíndromo")
+----------------------------------------
+
+resposta 5 - 
+
+numero = input("Digite um número: ")
+
+# Remove sinais (+ ou -)
+numero_limpo = numero.lstrip("+-")
+
+# Remove zeros à esquerda
+numero_limpo = numero_limpo.lstrip("0")
+
+# Caso fique vazio (ex: "000")
+if numero_limpo == "":
+    numero_limpo = "0"
+
+# Inverte o número
+invertido = numero_limpo[::-1]
+
+#print("Número invertido:", invertido)
+
+# Verifica se é palíndromo
+if numero_limpo == invertido:
+    print("É palíndromo")
+else:
+    print("Não é palíndromo")

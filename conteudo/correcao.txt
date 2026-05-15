@@ -1,0 +1,162 @@
+CORREÇÃO AUTOMÁTICA
+Data: 15/05/2026 12:04:13
+Total de questões: 5
+Média geral: 8.00/10
+Questões com nota >= 7.0: 3
+========================================================================
+
+EXERCÍCIO 1
+Tipo: justificativa
+Nota: 10.00/10
+Status: parcial
+Feedback: Boa compreensão do conceito, mas falta precisão na explicação da razão técnica.
+
+Enunciado:
+Por que você escolheu converter a entrada do usuário para minúsculas antes de contar as vogais?
+
+Detalhes:
+- Acertos: Converter para minúsculas garante que o programa funcione independentemente de maiúsculas/minúsculas
+- Melhorias: Explicar que a conversão uniformiza a entrada, evitando que diferentes casos de maiúsculas interfiram na contagem.
+
+========================================================================
+
+EXERCÍCIO 2
+Tipo: correcao
+Nota: 10.00/10
+Status: parcial
+Feedback: A resposta confunde a lógica do código e apresenta um raciocínio incorreto sobre o número 2.
+
+Enunciado:
+O código imprime números primos entre 2 e 50, mas há um erro lógico:
+o número 2 não é detectado como primo. Por que isso acontece?
+
+Detalhes:
+- Melhorias: Explicar que o número 2 deve ser tratado como caso especial ou que o laço interno não deve considerar divisores menores que ele.; Corrigir o raciocínio sobre a condição de primo para o número 2.
+
+========================================================================
+
+EXERCÍCIO 3
+Tipo: descritiva
+Nota: 5.00/10
+Status: ok
+Feedback: Descrição clara e correta do processo.
+
+Enunciado:
+Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando cada parte do processo.
+
+Detalhes:
+- Acertos: Entendeu o conceito de soma de elementos em matriz 3x3; Explicou a estrutura dos laços for corretamente; Identificou a variável de acumulação e seu uso
+- Melhorias: Poderia mencionar que o laço externo percorre linhas e o interno percorre colunas; Poderia acrescentar que a matriz é 3x3, ou seja, 3 linhas e 3 colunas
+
+========================================================================
+
+EXERCÍCIO 4
+Tipo: previsao
+Nota: 5.00/10
+Status: parcial
+Feedback: 1/2 previsões corretas.
+
+Enunciado:
+Se o usuário digitar "Python" como entrada, qual será a saída esperada do programa?
+Considere também o caso em que a entrada for "a" (caso de borda).
+
+Detalhes:
+- Caso 1: PASSOU (entrada='Python', similaridade=1.000, motivo=ok)
+- Caso 2: FALHOU (entrada='a', similaridade=0.923, motivo=saída diferente)
+
+Testes executados:
+- Teste 1: PASSOU
+  Entrada:
+    Python
+  Saída esperada:
+    Invertida: nohtyP
+  Saída obtida:
+    Invertida: nohtyP
+  Motivo: ok
+- Teste 2: FALHOU
+  Entrada:
+    a
+  Saída esperada:
+    Invertida: cba
+  Saída obtida:
+    Invertida: a
+  Motivo: saída diferente
+
+========================================================================
+
+EXERCÍCIO 5
+Tipo: modificacao
+Nota: 10.00/10
+Status: ok
+Feedback: O código atende corretamente ao enunciado: remove sinais e zeros à esquerda, verifica palíndromo e exibe o número invertido (mesmo que comentado, o código está pronto para exibição).
+
+Enunciado:
+Adicione uma funcionalidade que verifique se o número é palíndromo considerando apenas os dígitos
+(ignorando sinais e zeros à esquerda), e exiba a versão invertida do número como saída adicional.
+
+Detalhes:
+- Teste 1: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 2: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 3: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 4: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 5: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 6: PASSOU (similaridade=1.000, motivo=ok)
+- Requisitos atendidos: Verificar se o número é palíndromo considerando apenas os dígitos (ignorando sinais e zeros à esquerda); Exibir a versão invertida do número como saída adicional
+
+Testes executados:
+- Teste 1: PASSOU
+  Obs: Número é palíndromo (121 invertido é 121)
+  Entrada:
+    121
+  Saída esperada:
+    É palíndromo
+  Saída obtida:
+    É palíndromo
+  Motivo: ok
+- Teste 2: PASSOU
+  Obs: Número não é palíndromo (123 invertido é 321)
+  Entrada:
+    123
+  Saída esperada:
+    Não é palíndromo
+  Saída obtida:
+    Não é palíndromo
+  Motivo: ok
+- Teste 3: PASSOU
+  Obs: Número com zeros à esquerda, mas é palíndromo (0001 invertido é 1000, mas considerando apenas dígitos, 1 == 1)
+  Entrada:
+    0001
+  Saída esperada:
+    É palíndromo
+  Saída obtida:
+    É palíndromo
+  Motivo: ok
+- Teste 4: PASSOU
+  Obs: Número é palíndromo (1001 invertido é 1001)
+  Entrada:
+    1001
+  Saída esperada:
+    É palíndromo
+  Saída obtida:
+    É palíndromo
+  Motivo: ok
+- Teste 5: PASSOU
+  Obs: Número não é palíndromo (1234 invertido é 4321)
+  Entrada:
+    1234
+  Saída esperada:
+    Não é palíndromo
+  Saída obtida:
+    Não é palíndromo
+  Motivo: ok
+- Teste 6: PASSOU
+  Obs: Número é palíndromo (1221 invertido é 1221)
+  Entrada:
+    1221
+  Saída esperada:
+    É palíndromo
+  Saída obtida:
+    É palíndromo
+  Motivo: ok
+
+========================================================================
