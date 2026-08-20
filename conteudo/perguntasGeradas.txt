@@ -2,149 +2,185 @@
 Exercício gerado com base na sua resposta da questão 1: Questão 1
 ============================================================
 
-1 - [JUSTIFICATIVA] Por que você escolheu converter a entrada do usuário para minúsculas antes de contar as vogais?
-
-Seu código:
-----------------------------------------
-texto = input("Digite uma frase: ").lower()
-vogais = "aeiou"
-contador = 0
-
-for letra in texto:
-    if letra in vogais:
-        contador += 1
-
-print("Quantidade de vogais:", contador)
-----------------------------------------
+1 - [MODIFICACAO] Adicione uma funcionalidade que permita ao usuário escolher qual operação realizar (soma, subtração, multiplicação ou divisão) e exiba apenas a operação escolhida, sem exibir as outras.
 
 resposta 1 -
-Converter para minúsculas garante que:
-O programa funcione corretamente independente de maiúsculas/minúsculas
-Evita erros de contagem
-Torna a verificação mais simples (não precisa checar "AEIOU" também)
+
+Seu código:
+
+
+print("\nEscolha a operação:")
+print("1 - Soma")
+print("2 - Subtração")
+print("3 - Multiplicação")
+print("4 - Divisão")
+
+opcao = input("Digite a opção desejada: ")
+
+if opcao == "1":
+    
+elif opcao == "2":
+
+elif opcao == "3":
+    print("Multiplicação:", num1 * num2)
+
+elif opcao == "4":
+    if num2 != 0:
+        print("Divisão:", num1 / num2)
+
+else:
+    print("Opção inválida!")
+
+
+
+
 
 ============================================================
 Exercício gerado com base na sua resposta da questão 2: Questão 2
 ============================================================
 
-2 - [CORRECAO] O código imprime números primos entre 2 e 50, mas há um erro lógico: 
-o número 2 não é detectado como primo. Por que isso acontece?
+2 - [DESCRITIVA] Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando como as condições são avaliadas e qual é o resultado final para cada caso.
 
 Seu código:
-----------------------------------------
-for num in range(2, 51):
-    primo = True
 
-    for i in range(2, num):
-        if num % i == 0:
-            primo = False
-            break
+nota = float(input("Digite a nota do aluno: "))
 
-    if primo:
-        print(num)
-----------------------------------------
+if nota >= 7:
+    print("")
+elif nota >= 5:
+    print("Recuperação")
+else:
+    print("Reprovado")
 
-resposta 2 - 
-Na verdade, o código não possui erro em relação ao número 2.
-Isso acontece porque, para num = 2, ou seja, um intervalo vazio.
-Como o laço interno não executa nenhuma vez, a variável primo permanece como True, e o número 2 é corretamente identificado como primo.
-Portanto, o número 2 é detectado corretamente como primo nesse código.imo
+
+
+resposta 2 -
+
+O código começa pedindo para o usuário digitar a nota do aluno e converte esse valor para um número decimal (float).
+Em seguida, ele verifica a nota informada. Se a nota for maior ou igual a 7, o programa entra no primeiro if, porém não exibe nenhuma mensagem porque o print("") está vazio.
+Se a nota não for maior ou igual a 7, o programa verifica a segunda condição (elif). Se a nota for maior ou igual a 5, ele mostra a mensagem "Recuperação".
+Caso nenhuma das condições anteriores seja verdadeira, significa que a nota é menor que 5. Nesse caso, o programa executa o else e exibe a mensagem "Reprovado".
+
+
 
 ============================================================
 Exercício gerado com base na sua resposta da questão 3: Questão 3
 ============================================================
 
-3 - [DESCRITIVA] Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando cada parte do processo.
+3 - [JUSTIFICATIVA] Por que o aluno usou `maior = None` em vez de `maior = 0` ou outro valor 
+inicial para determinar o maior número?
 
 Seu código:
-----------------------------------------
-matriz = [
-    [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, 9]
-]
+
+# Leia 10 números inteiros e informe a soma,
+# média e o maior número.
 
 soma = 0
+maior = None
 
-for linha in matriz:
-    for elemento in linha:
-        soma += elemento
+for i in range(10):
+    numero = int(input(f"Digite o {i+1}º número: "))
+    soma += numero
 
-print("Soma total:", soma)
-----------------------------------------
+    if maior is None or numero > maior:
+        maior = numero
 
-resposta 3 - 
+media = soma
 
-O código calcula a soma de todos os elementos de uma matriz 3x3.
-Primeiro, é criada uma matriz com três listas internas, cada uma representando uma linha com três números.
-Em seguida, a variável soma é inicializada com valor 0, que servirá para acumular os valores.
-Depois, o programa percorre cada linha da matriz usando um laço for. Para cada linha, ele percorre todos os seus elementos com outro laço for.
-A cada elemento visitado, seu valor é somado à variável soma.
-Ao final da execução dos dois laços, todos os elementos da matriz terão sido somados, e o resultado total é exibido com um print.
+print("Soma:", soma)
+print("Média:", media)
+print("Maior número:", maior)
+
+resposta 3 -  
+O aluno usou maior = None porque, no início do programa, ainda não existe um maior número definido. 
+Assim, quando o primeiro número é digitado, ele é automaticamente armazenado na variável maior.
+
+
 
 ============================================================
 Exercício gerado com base na sua resposta da questão 4: Questão 4
 ============================================================
 
-4 - [PREVISAO] Se o usuário digitar "Python" como entrada, qual será a saída esperada do programa? 
-Considere também o caso em que a entrada for "a" (caso de borda).
+4 - [PREVISAO] Dado o vetor [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], qual será a saída esperada do programa?
 
 Seu código:
-----------------------------------------
-texto = input("Digite uma palavra: ")
-invertida = ""
 
-for i in range(len(texto)-1, -1, -1):
-    invertida += texto[i]
+# Leia um vetor com 10 números inteiros e informe
+# quantos são pares e quantos são ímpares.
 
-print("Invertida:", invertida)
-----------------------------------------
+vetor = []
+pares = 0
+impares = 0
 
-resposta 4 - 
+for i in range(10):
+    numero = int(input(f"Digite o {i+1}º número: "))
+    vetor.append(numero)
 
-Invertida: nohtyP
-Invertida: cba
+for numero in vetor:
+    if numero % 2 == 0:
+        pares += 1
+    else:
+        impares += 1
+
+print("Quantidade de números pares:", pares)
+print("Quantidade de números ímpares:", impares)
+
+resposta 4-
+
+Para o vetor [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], o programa percorre todos os números e verifica se cada um é par ou ímpar usando o operador %.
+Os números pares são: 2, 4, 6, 8 e 10 (5 números).
+Os números ímpares são: 3, 5, 7, 9 e 11 (5 números).
+Portanto, a saída esperada será:
+
+Quantidade de números pares: 5
+Quantidade de números ímpares: 5
 
 ============================================================
 Exercício gerado com base na sua resposta da questão 5: Questão 5
 ============================================================
 
-5 - [MODIFICACAO] Adicione uma funcionalidade que verifique se o número é palíndromo considerando apenas os dígitos 
-(ignorando sinais e zeros à esquerda), e exiba a versão invertida do número como saída adicional.
+5 - [CORRECAO] O código apresenta um erro lógico ao processar o valor restante após cada divisão.
+Qual é o problema com a maneira como o valor é atualizado após cada operação de divisão e módulo?
 
 Seu código:
-----------------------------------------
-numero = input("Digite um número: ")
 
-invertido = numero[::-1]
+# Simulação de um caixa eletrônico.
 
-if numero == invertido:
-    print("É palíndromo")
-else:
-    print("Não é palíndromo")
-----------------------------------------
+valor = int(input("Digite o valor do saque: "))
+
+notas100 = valor // 100
+valor = valor % 100
+
+notas50 = valor // 50
+valor = valor % 50
+
+notas20 = valor // 20
+valor = valor % 20
+
+notas10 = valor // 10
+valor = valor % 10
+
+notas5 = valor // 5
+valor = valor % 5
+
+notas2 = valor // 2
+valor = valor % 2
+
+notas1 = valor
+
+print("Notas de R$100:", notas100)
+print("Notas de R$50:", notas50)
+print("Notas de R$20:", notas20)
+print("Notas de R$10:", notas10)
+print("Notas de R$5:", notas5)
+print("Notas de R$2:", notas2)
+print("Notas de R$1:", notas1)
+
 
 resposta 5 - 
 
-numero = input("Digite um número: ")
+Na verdade, não há um erro lógico na forma como o valor é atualizado. O programa utiliza corretamente o operador de módulo (%) para obter o restante após calcular a quantidade de notas de cada valor.
 
-# Remove sinais (+ ou -)
-numero_limpo = numero.lstrip("+-")
+O processo funciona assim: primeiro o programa calcula quantas notas de um determinado valor podem ser usadas (//) e, em seguida, atualiza a variável valor com o restante (%). Esse restante é utilizado para calcular a próxima quantidade de notas menores.
 
-# Remove zeros à esquerda
-numero_limpo = numero_limpo.lstrip("0")
 
-# Caso fique vazio (ex: "000")
-if numero_limpo == "":
-    numero_limpo = "0"
-
-# Inverte o número
-invertido = numero_limpo[::-1]
-
-#print("Número invertido:", invertido)
-
-# Verifica se é palíndromo
-if numero_limpo == invertido:
-    print("É palíndromo")
-else:
-    print("Não é palíndromo")

@@ -10,14 +10,13 @@ Os testes podem vir do próprio enunciado (explícitos) ou ser gerados via LLM.
 
 from __future__ import annotations
 
+import re
 from typing import Dict, List
 
 from config import TESTES_ALVO, USAR_LLM
 from llm.client import chamar_llm_json
 from models.questao import Questao
-from utils.text import normalizar_texto, codigo_tem_input
-
-
+from utils.text import normalizar_texto, codigo_tem_input, extrair_prompts_input
 # ─── Deduplicação ────────────────────────────────────────────────────────────
 
 def deduplicar_testes(testes: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -92,7 +91,11 @@ def _gerar_testes_llm_once(q: Questao, quantidade: int) -> List[Dict[str, str]]:
 
     if usa_input:
         regra_input = "- O código usa input(), então gere entradas realistas com dados para input()."
-        regra_entrada = "- entrada deve conter dados válidos e terminar com \\n"
+        regra_entrada = ("- entrada deve conter SOMENTE os valores digitados pelo usuário", 
+        "um por linha, terminando com \\n. "
+        "NÃO inclua textos dos prompts, menus ou mensagens do programa. "
+        "Exemplo correto: \"5\\n3\\n1\\n\". "
+        "Exemplo errado: \"Digite o primeiro número: 5\\n\".")
     else:
         regra_input = "- O código NÃO usa input(), então NÃO gere entradas."
         regra_entrada = '- entrada deve ser "" (string vazia)'
@@ -224,13 +227,15 @@ def obter_testes(q: Questao) -> List[Dict[str, str]]:
     """
     Retorna a lista final de testes para uma questão, combinando:
     - testes explícitos do enunciado
-    - testes gerados via LLM (apenas se o código usar input())
+    - testes gerados via LLM
 
-    Limita ao máximo definido em TESTES_ALVO.
+    Também corrige entradas interativas geradas incorretamente pelo LLM.
     """
     testes = obter_testes_explicitos(q)
 
-    if codigo_tem_input(q.codigo):
+    usa_input = codigo_tem_input(q.codigo)
+
+    if usa_input:
         gerados = gerar_testes_com_llm(q, quantidade=TESTES_ALVO)
     else:
         gerados = []
@@ -238,10 +243,103 @@ def obter_testes(q: Questao) -> List[Dict[str, str]]:
     if gerados:
         testes.extend(gerados)
 
-    testes = validar_testes(testes, requer_input=codigo_tem_input(q.codigo))
+    # Corrige entradas do tipo:
+    # "Digite o primeiro número: 5"
+    # para:
+    # "5"
+    if usa_input:
+        testes_corrigidos = []
+
+        for teste in testes:
+            teste_corrigido = dict(teste)
+            teste_corrigido["entrada"] = limpar_entrada_interativa(
+                teste_corrigido.get("entrada", ""),
+                q.codigo,
+            )
+            testes_corrigidos.append(teste_corrigido)
+
+        testes = testes_corrigidos
+
+    testes = validar_testes(testes, requer_input=usa_input)
     testes = deduplicar_testes(testes)
 
     if not testes:
         return []
 
     return testes[:TESTES_ALVO]
+
+
+
+def limpar_entrada_interativa(entrada: str, codigo: str) -> str:
+    """
+    Limpa entradas geradas pelo LLM quando ele inclui textos de prompt.
+
+    Exemplo errado gerado pelo LLM:
+        Digite o primeiro número: 5
+        Digite o segundo número: 3
+        Escolha a operação:
+        1 - Soma
+        2 - Subtração
+        3 - Multiplicação
+        4 - Divisão
+        Digite a opção desejada: 1
+
+    Entrada correta para stdin:
+        5
+        3
+        1
+    """
+    entrada = normalizar_texto(entrada)
+
+    if not entrada:
+        return ""
+
+    prompts = extrair_prompts_input(codigo)
+
+    linhas = [linha.strip() for linha in entrada.splitlines() if linha.strip()]
+    valores = []
+
+    for linha in linhas:
+        # Ignora linhas de menu, como:
+        # 1 - Soma
+        # 2 - Subtração
+        if re.match(r"^\d+\s*[-.)]\s*\D+", linha):
+            continue
+
+        # Se a linha começa com algum prompt do input(),
+        # remove o prompt e mantém apenas o valor digitado.
+        removeu_prompt = False
+
+        for prompt in prompts:
+            prompt = normalizar_texto(prompt).strip()
+
+            if prompt and linha.startswith(prompt):
+                valor = linha[len(prompt):].strip()
+
+                if valor:
+                    valores.append(valor)
+
+                removeu_prompt = True
+                break
+
+        if removeu_prompt:
+            continue
+
+        # Se a linha tem formato "algum texto: valor",
+        # pega apenas o valor depois dos dois-pontos.
+        if ":" in linha:
+            _, direita = linha.rsplit(":", 1)
+            valor = direita.strip()
+
+            if valor:
+                valores.append(valor)
+
+            continue
+
+        # Caso a linha já seja um valor puro, mantém.
+        valores.append(linha)
+
+    if not valores:
+        return ""
+
+    return "\n".join(valores) + "\n"

@@ -1,162 +1,93 @@
 CORREÇÃO AUTOMÁTICA
-Data: 15/05/2026 12:04:13
+Data: 07/07/2026 17:21:26
 Total de questões: 5
-Média geral: 8.00/10
-Questões com nota >= 7.0: 3
+Média geral: 3.73/10
+Questões com nota >= 7.0: 2
 ========================================================================
 
 EXERCÍCIO 1
-Tipo: justificativa
-Nota: 10.00/10
-Status: parcial
-Feedback: Boa compreensão do conceito, mas falta precisão na explicação da razão técnica.
+Tipo: modificacao
+Nota: 0.00/10
+Status: erro
+Feedback: O código não atende ao requisito de exibir apenas a operação escolhida, pois imprime múltiplas operações condicionais e não limita a saída a apenas a operação selecionada.
 
 Enunciado:
-Por que você escolheu converter a entrada do usuário para minúsculas antes de contar as vogais?
+Adicione uma funcionalidade que permita ao usuário escolher qual operação realizar (soma, subtração, multiplicação ou divisão) e exiba apenas a operação escolhida, sem exibir as outras.
 
 Detalhes:
-- Acertos: Converter para minúsculas garante que o programa funcione independentemente de maiúsculas/minúsculas
-- Melhorias: Explicar que a conversão uniformiza a entrada, evitando que diferentes casos de maiúsculas interfiram na contagem.
+- O código não compila em Python.
+- Faltantes: O código não exibe apenas a operação escolhida; exibe múltiplas operações (soma, subtração, multiplicação, divisão) em diferentes blocos.
 
 ========================================================================
 
 EXERCÍCIO 2
-Tipo: correcao
-Nota: 10.00/10
+Tipo: descritiva
+Nota: 8.00/10
 Status: parcial
-Feedback: A resposta confunde a lógica do código e apresenta um raciocínio incorreto sobre o número 2.
+Feedback: A ideia está quase correta, mas há um erro conceitual na descrição do fluxo de condição.
 
 Enunciado:
-O código imprime números primos entre 2 e 50, mas há um erro lógico:
-o número 2 não é detectado como primo. Por que isso acontece?
+Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando como as condições são avaliadas e qual é o resultado final para cada caso.
 
 Detalhes:
-- Melhorias: Explicar que o número 2 deve ser tratado como caso especial ou que o laço interno não deve considerar divisores menores que ele.; Corrigir o raciocínio sobre a condição de primo para o número 2.
+- Acertos: O código pede a nota e converte para float.; As condições são avaliadas sequencialmente.; O else é executado quando nenhuma condição anterior é verdadeira.
+- Melhorias: O primeiro if (nota >= 7) não exibe mensagem porque o print está vazio — isso é correto, mas o aluno não mencionou o que acontece quando a condição é verdadeira (ex: 'Aprovado'), o que é essencial para entender o propósito do código.; A condição 'elif nota >= 5' é interpretada como 'se nota for maior ou igual a 5 e menor que 7', o que é correto, mas o aluno não especificou que a condição anterior (>=7) já foi verificada, o que pode causar confusão.
 
 ========================================================================
 
 EXERCÍCIO 3
-Tipo: descritiva
-Nota: 5.00/10
-Status: ok
-Feedback: Descrição clara e correta do processo.
+Tipo: justificativa
+Nota: 10.00/10
+Status: parcial
+Feedback: A ideia está parcialmente correta, mas há uma falha conceitual importante.
 
 Enunciado:
-Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando cada parte do processo.
+Por que o aluno usou `maior = None` em vez de `maior = 0` ou outro valor
+inicial para determinar o maior número?
 
 Detalhes:
-- Acertos: Entendeu o conceito de soma de elementos em matriz 3x3; Explicou a estrutura dos laços for corretamente; Identificou a variável de acumulação e seu uso
-- Melhorias: Poderia mencionar que o laço externo percorre linhas e o interno percorre colunas; Poderia acrescentar que a matriz é 3x3, ou seja, 3 linhas e 3 colunas
+- Acertos: O aluno entendeu que 'None' pode ser usado como valor inicial.
+- Melhorias: O uso de 'None' não implica que o primeiro número é 'automaticamente armazenado' — é necessário verificar se o número é maior que None (o que é logicamente inválido, pois None é um objeto e não um número).; A lógica de comparação precisa ser corrigida: o primeiro número deve ser atribuído à variável maior apenas se for o primeiro, e a comparação deve ser feita com números, não com None.
 
 ========================================================================
 
 EXERCÍCIO 4
 Tipo: previsao
-Nota: 5.00/10
-Status: parcial
-Feedback: 1/2 previsões corretas.
+Nota: 0.66/10
+Status: erro
+Feedback: Resposta incorreta para a saída esperada.
 
 Enunciado:
-Se o usuário digitar "Python" como entrada, qual será a saída esperada do programa?
-Considere também o caso em que a entrada for "a" (caso de borda).
+Dado o vetor [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], qual será a saída esperada do programa?
+
+Saída calculada:
+Digite o 1º número:
 
 Detalhes:
-- Caso 1: PASSOU (entrada='Python', similaridade=1.000, motivo=ok)
-- Caso 2: FALHOU (entrada='a', similaridade=0.923, motivo=saída diferente)
+- Saída correta calculada a partir do código-base.
+- Similaridade com a resposta do aluno: 0.066
 
 Testes executados:
-- Teste 1: PASSOU
-  Entrada:
-    Python
+- Teste 1: FALHOU
   Saída esperada:
-    Invertida: nohtyP
+    Digite o 1º número:
   Saída obtida:
-    Invertida: nohtyP
-  Motivo: ok
-- Teste 2: FALHOU
-  Entrada:
-    a
-  Saída esperada:
-    Invertida: cba
-  Saída obtida:
-    Invertida: a
+    Digite o 1º número:
   Motivo: saída diferente
 
 ========================================================================
 
 EXERCÍCIO 5
-Tipo: modificacao
-Nota: 10.00/10
-Status: ok
-Feedback: O código atende corretamente ao enunciado: remove sinais e zeros à esquerda, verifica palíndromo e exibe o número invertido (mesmo que comentado, o código está pronto para exibição).
+Tipo: correcao
+Nota: 0.00/10
+Status: erro
+Feedback: Erro de sintaxe: invalid syntax linha 1
 
 Enunciado:
-Adicione uma funcionalidade que verifique se o número é palíndromo considerando apenas os dígitos
-(ignorando sinais e zeros à esquerda), e exiba a versão invertida do número como saída adicional.
+O código apresenta um erro lógico ao processar o valor restante após cada divisão.
+Qual é o problema com a maneira como o valor é atualizado após cada operação de divisão e módulo?
 
 Detalhes:
-- Teste 1: PASSOU (similaridade=1.000, motivo=ok)
-- Teste 2: PASSOU (similaridade=1.000, motivo=ok)
-- Teste 3: PASSOU (similaridade=1.000, motivo=ok)
-- Teste 4: PASSOU (similaridade=1.000, motivo=ok)
-- Teste 5: PASSOU (similaridade=1.000, motivo=ok)
-- Teste 6: PASSOU (similaridade=1.000, motivo=ok)
-- Requisitos atendidos: Verificar se o número é palíndromo considerando apenas os dígitos (ignorando sinais e zeros à esquerda); Exibir a versão invertida do número como saída adicional
-
-Testes executados:
-- Teste 1: PASSOU
-  Obs: Número é palíndromo (121 invertido é 121)
-  Entrada:
-    121
-  Saída esperada:
-    É palíndromo
-  Saída obtida:
-    É palíndromo
-  Motivo: ok
-- Teste 2: PASSOU
-  Obs: Número não é palíndromo (123 invertido é 321)
-  Entrada:
-    123
-  Saída esperada:
-    Não é palíndromo
-  Saída obtida:
-    Não é palíndromo
-  Motivo: ok
-- Teste 3: PASSOU
-  Obs: Número com zeros à esquerda, mas é palíndromo (0001 invertido é 1000, mas considerando apenas dígitos, 1 == 1)
-  Entrada:
-    0001
-  Saída esperada:
-    É palíndromo
-  Saída obtida:
-    É palíndromo
-  Motivo: ok
-- Teste 4: PASSOU
-  Obs: Número é palíndromo (1001 invertido é 1001)
-  Entrada:
-    1001
-  Saída esperada:
-    É palíndromo
-  Saída obtida:
-    É palíndromo
-  Motivo: ok
-- Teste 5: PASSOU
-  Obs: Número não é palíndromo (1234 invertido é 4321)
-  Entrada:
-    1234
-  Saída esperada:
-    Não é palíndromo
-  Saída obtida:
-    Não é palíndromo
-  Motivo: ok
-- Teste 6: PASSOU
-  Obs: Número é palíndromo (1221 invertido é 1221)
-  Entrada:
-    1221
-  Saída esperada:
-    É palíndromo
-  Saída obtida:
-    É palíndromo
-  Motivo: ok
+- O código não compila em Python.
 
 ========================================================================

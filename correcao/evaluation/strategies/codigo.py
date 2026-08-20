@@ -33,6 +33,7 @@ from utils.text import (
     extrair_prompts_input,
     normalizar_texto,
     remover_prompts_saida,
+    saida_contem_esperado,
 )
 
 
@@ -130,11 +131,14 @@ def avaliar(
         saida_esperada_norm = remover_prompts_saida(normalizar_texto(saida_esperada), prompts_input)
 
         sim = comparar_textos(saida_obtida.lower(), saida_esperada_norm.lower())
+        contem_esperado = saida_contem_esperado(saida_obtida, saida_esperada_norm)
 
         if erro_exec:
             ok, motivo = False, motivo_exec
         elif sim >= LIMIAR_APROX:
             ok, motivo = True, "ok"
+        elif contem_esperado:
+            ok, motivo = True, "saída esperada presente; há saída extra"
         else:
             ok, motivo = False, "saída diferente"
 

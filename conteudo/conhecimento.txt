@@ -1,0 +1,123 @@
+Questões:
+
+1 - Desenvolva um algoritmo que leia dois números inteiros e exiba a soma, a subtração, amultiplicação e a divisão entre eles. Caso o segundo número seja igual a zero, o algoritmo  deve informar que a divisão não pode ser realizada.
+
+2 - Elabore um algoritmo que leia a nota de um aluno (de 0 a 10) e informe se ele está aprovado (nota maior ou igual a 7), em recuperação (nota entre 5 e 6,9) ou reprovado (nota inferior a 5).
+
+3 - Crie um algoritmo que leia 10 números inteiros. Ao final, o programa deve informar a soma de todos os números digitados, a média dos valores e qual foi o maior número informado.
+
+4 - Faça um algoritmo que leia um vetor com 10 números inteiros. Em seguida, o programa deve contar quantos números são pares e quantos são ímpares, exibindo essas quantidades ao final da execução.
+
+5 - Desenvolva um algoritmo para simular um caixa eletrônico. O programa deve ler um valor inteiro positivo informado pelo usuário e calcular a menor quantidade possível de cédulas necessárias para realizar o saque, considerando notas de R$100, R$50, R$20, R$10, R$5, R$2 e R$1. O algoritmo deve exibir a quantidade de cada cédula utilizada.
+
+
+
+
+resposta 1- 
+
+# Leia dois números inteiros e exiba a soma, subtração,
+# multiplicação e divisão.
+
+num1 = int(input("Digite o primeiro número: "))
+num2 = int(input("Digite o segundo número: "))
+
+print("Soma:", num1)
+print("Subtração:", num1 )
+print("Multiplicação:", num1 )
+
+if num2 != 0:
+    print("Divisão:", num1 / num2)
+else:
+    print("Não é possível realizar divisão por zero.")
+
+
+resposta 2 - 
+# Leia a nota de um aluno e informe sua situação.
+
+nota = float(input("Digite a nota do aluno: "))
+
+if nota >= 7:
+    print("")
+elif nota >= 5:
+    print("Recuperação")
+else:
+    print("Reprovado")
+
+
+
+resposta 3-     
+
+# Leia 10 números inteiros e informe a soma,
+# média e o maior número.
+
+soma = 0
+maior = None
+
+for i in range(10):
+    numero = int(input(f"Digite o {i+1}º número: "))
+    soma += numero
+
+    if maior is None or numero > maior:
+        maior = numero
+
+media = soma
+
+print("Soma:", soma)
+print("Média:", media)
+print("Maior número:", maior)
+
+
+resposta 4 - 
+# Leia um vetor com 10 números inteiros e informe
+# quantos são pares e quantos são ímpares.
+
+vetor = []
+pares = 0
+impares = 0
+
+for i in range(10):
+    numero = int(input(f"Digite o {i+1}º número: "))
+    vetor.append(numero)
+
+for numero in vetor:
+    if numero % 2 == 0:
+        pares += 1
+    else:
+        impares += 1
+
+print("Quantidade de números pares:", pares)
+print("Quantidade de números ímpares:", impares)
+
+resposta 5- 
+
+# Simulação de um caixa eletrônico.
+
+valor = int(input("Digite o valor do saque: "))
+
+notas100 = valor // 100
+valor = valor % 100
+
+notas50 = valor // 50
+valor = valor % 50
+
+notas20 = valor // 20
+valor = valor % 20
+
+notas10 = valor // 10
+valor = valor % 10
+
+notas5 = valor // 5
+valor = valor % 5
+
+notas2 = valor // 2
+valor = valor % 2
+
+notas1 = valor
+
+print("Notas de R$100:", notas100)
+print("Notas de R$50:", notas50)
+print("Notas de R$20:", notas20)
+print("Notas de R$10:", notas10)
+print("Notas de R$5:", notas5)
+print("Notas de R$2:", notas2)
+print("Notas de R$1:", notas1)

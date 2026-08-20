@@ -23,5 +23,5 @@ TIPOS_PERGUNTA = [
 ]
 
 # --- Caminhos de arquivos ---
-ARQUIVO_CONHECIMENTO  = "conhecimento.txt"
+ARQUIVO_CONHECIMENTO  = "../conteudo/conhecimento.txt"
 ARQUIVO_SAIDA         = "../conteudo/perguntasGeradas.txt"

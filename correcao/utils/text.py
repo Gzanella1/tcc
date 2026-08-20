@@ -76,6 +76,38 @@ def comparar_textos(a: str, b: str) -> float:
     return ratio
 
 
+def saida_contem_esperado(saida_obtida: str, saida_esperada: str) -> bool:
+    """
+    Verifica se a saída obtida contém a saída esperada, preservando a ordem.
+
+    Útil para avaliação de código/modificação: um print extra não deve
+    invalidar a resposta se todos os valores esperados aparecerem corretamente.
+    """
+    esperada = normalizar_texto(saida_esperada)
+    obtida = normalizar_texto(saida_obtida)
+
+    if not esperada:
+        return not obtida
+
+    if esperada.lower() in obtida.lower():
+        return True
+
+    linhas_esperadas = [ln.strip().lower() for ln in esperada.splitlines() if ln.strip()]
+    linhas_obtidas = [ln.strip().lower() for ln in obtida.splitlines() if ln.strip()]
+
+    if not linhas_esperadas:
+        return True
+
+    pos = 0
+    for linha_obtida in linhas_obtidas:
+        if linhas_esperadas[pos] in linha_obtida:
+            pos += 1
+            if pos == len(linhas_esperadas):
+                return True
+
+    return False
+
+
 def extrair_codigo(texto: str) -> str:
     """
     Extrai código entre cercas markdown.
