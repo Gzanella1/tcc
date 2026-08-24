@@ -18,6 +18,18 @@ Estratégia combinada:
 Regra importante:
     Se o enunciado NÃO pedir saída/retorno explícito, a ausência de
     print() ou return não é penalizada.
+
+Rastreabilidade da evidência (Etapa 4.2) — política para a combinação
+70% execução + 30% LLM, sem criar categoria "mista":
+
+    - Com testes: a nota final depende das duas fontes (0.7*execução +
+      0.3*LLM). A fonte registrada é a PREDOMINANTE: "execucao"
+      (70% do peso), e os detalhes registram que há componente LLM.
+    - Sem testes: nota_final = 100% LLM → fonte "llm".
+    - Placeholder neutro quando não há testes e o código exige entrada
+      (nada foi avaliado): fonte "ausente".
+    - Quando o LLM falha ou está desativado, o Resultado retornado é
+      exatamente o da parte objetiva, herdando a fonte dele.
 """
 
 from __future__ import annotations
@@ -26,6 +38,11 @@ import re
 from dataclasses import replace
 
 from config import USAR_LLM
+from evaluation.evidencia import (
+    FONTE_AUSENTE,
+    FONTE_EXECUCAO,
+    FONTE_LLM,
+)
 from evaluation.strategies.codigo import avaliar as avaliar_codigo
 from llm.client import chamar_llm_json
 from models.questao import Questao, Resultado
@@ -158,6 +175,9 @@ def _resultado_sem_testes(q: Questao) -> Resultado:
 
     Isso evita executar código com input() sem fornecer entrada,
     o que geraria EOFError e produziria um erro falso no relatório.
+
+    Nenhuma avaliação foi aplicada aqui — nenhuma evidência produziu
+    esta nota provisória, logo fonte_evidencia="ausente".
     """
     return Resultado(
         idx=q.idx,
@@ -170,6 +190,7 @@ def _resultado_sem_testes(q: Questao) -> Resultado:
             "A nota será definida pela análise dos requisitos via LLM.",
         ],
         testes_executados=[],
+        fonte_evidencia=FONTE_AUSENTE,
     )
 
 
@@ -268,6 +289,18 @@ def avaliar(q: Questao) -> Resultado:
 
     feedback = str(obj.get("feedback", "")).strip() or resultado_testes.feedback
 
+    # Política de fonte da evidência (ver docstring do módulo):
+    #   - com testes  → predominante "execucao" (70% do peso), com o
+    #     componente LLM registrado nos detalhes;
+    #   - sem testes  → nota vem só do LLM → "llm".
+    if testes:
+        fonte_final = FONTE_EXECUCAO
+        finais.append(
+            "Nota composta: 70% execução de testes + 30% avaliação via LLM."
+        )
+    else:
+        fonte_final = FONTE_LLM
+
     return Resultado(
         idx=q.idx,
         tipo=q.tipo,
@@ -276,4 +309,5 @@ def avaliar(q: Questao) -> Resultado:
         feedback=feedback,
         detalhes=resultado_testes.detalhes + finais,
         testes_executados=resultado_testes.testes_executados,
+        fonte_evidencia=fonte_final,
     )

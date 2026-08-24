@@ -39,10 +39,32 @@ class AIClient:
         """
         Gera uma pergunta do tipo solicitado sobre o exercício.
 
-        Retorna uma lista de Pergunta (normalmente com 1 item).
+        Retorna uma lista de Pergunta (normalmente com 1 item), cada uma
+        carregando a origem (enunciado original e código do aluno que a
+        originou) para rastreabilidade — Fase 3.1.
         """
         prompt = self._builder.construir(exercicio, tipo)
-        return self._chamar_api(exercicio.numero, exercicio.titulo, exercicio.codigo, tipo, prompt)
+        perguntas = self._chamar_api(
+            exercicio.numero,
+            exercicio.titulo,
+            exercicio.codigo,
+            tipo,
+            prompt,
+        )
+
+        # Transporta a origem para cada pergunta gerada.
+        # conceito_avaliado/evidencia/resposta_esperada/rubrica permanecem
+        # None: o sistema não inventa evidência nesta fase.
+        return [
+            Pergunta(
+                tipo=p.tipo,
+                pergunta=p.pergunta,
+                exercicio_numero=p.exercicio_numero,
+                enunciado_origem=exercicio.enunciado_original,
+                codigo_aluno_origem=exercicio.codigo_aluno_anterior,
+            )
+            for p in perguntas
+        ]
 
     # ------------------------------------------------------------------
     # Chamada à API com cache

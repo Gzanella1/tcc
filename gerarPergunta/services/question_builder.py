@@ -56,9 +56,14 @@ class QuestionBuilder:
     # ------------------------------------------------------------------
 
     def _cabecalho(self, exercicio: Exercicio) -> str:
+        """
+        Cabeçalho do prompt com o papel semântico explícito de cada dado
+        (Fase 3.1): enunciado original + código produzido pelo aluno.
+        """
         return (
-            f"Exercício {exercicio.numero}: {exercicio.titulo}\n\n"
-            f"Código do aluno:\n{exercicio.codigo}\n"
+            f"Exercício {exercicio.numero}.\n\n"
+            f"Enunciado original:\n{exercicio.enunciado_original}\n\n"
+            f"Código produzido pelo aluno:\n{exercicio.codigo_aluno_anterior}\n"
         )
 
     def _rodape(self, tipo: str) -> str:

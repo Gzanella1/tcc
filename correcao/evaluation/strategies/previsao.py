@@ -30,6 +30,7 @@ import re
 from typing import List, Tuple
 
 from config import LIMIAR_APROX, LIMIAR_EXATO
+from evaluation.evidencia import FONTE_AUSENTE, FONTE_EXECUCAO
 from execution.runner import executar_codigo_python
 from models.questao import Questao, Resultado
 from utils.text import comparar_textos, extrair_codigo, normalizar_texto
@@ -266,6 +267,7 @@ def _avaliar_com_pares(
         feedback=feedback,
         detalhes=detalhes,
         testes_executados=testes_exec,
+        fonte_evidencia=FONTE_EXECUCAO,
     )
 
 
@@ -323,6 +325,7 @@ def _avaliar_modo_legado(q: Questao, codigo_base: str) -> Resultado:
             "erro_execucao":  execucao["erro_execucao"],
         }],
         saida_correta=saida_correta,
+        fonte_evidencia=FONTE_EXECUCAO,
     )
 
 
@@ -339,6 +342,7 @@ def avaliar(q: Questao) -> Resultado:
             status="falha",
             feedback="Não foi possível localizar o código da questão para calcular a saída.",
             detalhes=["Faltou o trecho de código necessário para a previsão."],
+            fonte_evidencia=FONTE_AUSENTE,
         )
 
     resposta = q.resposta_aluno or ""

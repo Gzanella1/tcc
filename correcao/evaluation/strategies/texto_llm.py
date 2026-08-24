@@ -20,6 +20,7 @@ Estratégia:
 
 from __future__ import annotations
 
+from evaluation.evidencia import FONTE_AUSENTE, FONTE_HEURISTICA, FONTE_LLM
 from llm.client import chamar_llm_json
 from models.questao import Questao, Resultado
 from utils.text import normalizar_texto, sem_acentos
@@ -50,6 +51,7 @@ def avaliar(q: Questao) -> Resultado:
             status="erro",
             feedback="Resposta vazia.",
             detalhes=["Sem resposta para avaliar."],
+            fonte_evidencia=FONTE_AUSENTE,
         )
 
     enunciado   = normalizar_texto(q.enunciado)
@@ -140,6 +142,7 @@ Retorne APENAS JSON válido neste formato:
             status=status,
             feedback=str(obj.get("feedback", "")).strip() or feedback_base,
             detalhes=detalhes if detalhes else [feedback_base],
+            fonte_evidencia=FONTE_LLM,
         )
 
     # ── Fallback quando o LLM não responde ───────────────────────────────────
@@ -151,6 +154,7 @@ Retorne APENAS JSON válido neste formato:
             status="parcial",
             feedback=feedback_base,
             detalhes=["Correção feita por regra objetiva porque o LLM não retornou JSON válido."],
+            fonte_evidencia=FONTE_HEURISTICA,
         )
 
     return Resultado(
@@ -160,4 +164,5 @@ Retorne APENAS JSON válido neste formato:
         status=status_base,
         feedback=feedback_base,
         detalhes=["Correção feita por fallback heurístico porque o LLM não retornou JSON válido."],
+        fonte_evidencia=FONTE_HEURISTICA,
     )

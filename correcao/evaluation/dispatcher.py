@@ -33,6 +33,7 @@ from models.questao import Questao, Resultado
 from tests.generator import obter_testes
 from utils.text import extrair_codigo, normalizar_texto
 from utils.tipo import inferir_tipo, normalizar_tipo
+from validation import resposta_correcao_eh_textual, validar_questao
 
 
 def _extrair_resposta_codigo(q: Questao) -> str:
@@ -65,6 +66,13 @@ def corrigir_questao(q: Questao) -> Resultado:
         3. Fallback: tenta código; se nota=0, usa texto via LLM
     """
     tipo = normalizar_tipo(q.tipo) or inferir_tipo(q.enunciado)
+
+    erro_entrada = validar_questao(q)
+    if erro_entrada:
+        return erro_entrada
+
+    if tipo == "correcao" and resposta_correcao_eh_textual(q):
+        return texto_llm.avaliar(q)
 
     # Rota por tipo conhecido
     estrategia = _ESTRATEGIAS.get(tipo)

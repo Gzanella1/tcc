@@ -2,6 +2,13 @@
 # services/knowledge_loader.py
 # Responsabilidade única: ler e fazer o parse do arquivo .txt
 # com as questões e respostas dos alunos.
+#
+# Fase 3.1: o enunciado original de cada questão é preservado
+# separadamente do código produzido pelo aluno. Formatos de
+# enunciado aceitos: "N. Título" (legado) e "N - Enunciado"
+# (formato real do conhecimento.txt). Linhas de enunciado só são
+# reconhecidas FORA de blocos "resposta", para nunca capturar
+# código do aluno como título.
 # =============================================================
 
 import re
@@ -13,21 +20,22 @@ class KnowledgeLoader:
     """
     Lê o arquivo de conhecimento no formato:
 
-        1. Título da questão
-        2. Outro título
+        1 - Enunciado original da questão 1
+        2 - Enunciado original da questão 2
 
-        Resposta 1 -
-        <código do aluno>
+        resposta 1 -
+        <código produzido anteriormente pelo aluno>
 
-        Resposta 2 -
-        <código do aluno>
+        resposta 2 -
+        <código produzido anteriormente pelo aluno>
 
-    e retorna uma lista de objetos Exercicio.
+    e retorna uma lista de objetos Exercicio contendo, separadamente,
+    o enunciado original e a resposta/código anterior do aluno.
     """
 
     # Regex compiladas uma única vez (melhor performance)
-    _RE_QUESTAO   = re.compile(r"^\s*(\d+)\.\s*(.+?)\s*$")
-    _RE_RESPOSTA  = re.compile(r"^\s*Resposta\s*(\d+)\s*-\s*$", re.IGNORECASE)
+    _RE_ENUNCIADO = re.compile(r"^\s*(\d+)(?:\.\s*|\s+-\s+)(.+?)\s*$")
+    _RE_RESPOSTA = re.compile(r"^\s*Resposta\s*(\d+)\s*-\s*$", re.IGNORECASE)
 
     def __init__(self, caminho_arquivo: str):
         self.caminho = Path(caminho_arquivo)
@@ -42,9 +50,9 @@ class KnowledgeLoader:
             raise FileNotFoundError(f"Arquivo não encontrado: {self.caminho}")
 
         linhas = self.caminho.read_text(encoding="utf-8").splitlines(keepends=True)
-        titulos, respostas = self._parsear(linhas)
+        enunciados, respostas = self._parsear(linhas)
 
-        return self._montar_exercicios(titulos, respostas)
+        return self._montar_exercicios(enunciados, respostas)
 
     # ------------------------------------------------------------------
     # Métodos privados de parsing
@@ -52,17 +60,17 @@ class KnowledgeLoader:
 
     def _parsear(self, linhas: list[str]) -> tuple[dict, dict]:
         """
-        Percorre as linhas e separa títulos e blocos de código.
+        Percorre as linhas e separa enunciados originais e blocos de código.
 
         Retorna:
-            titulos   – {numero: "título da questão"}
-            respostas – {numero: "código do aluno"}
+            enunciados – {numero: "enunciado original da questão"}
+            respostas  – {numero: "código produzido anteriormente pelo aluno"}
         """
-        titulos:  dict[int, str]  = {}
+        enunciados: dict[int, str] = {}
         respostas: dict[int, str] = {}
 
-        numero_atual: int | None  = None
-        linhas_codigo: list[str]  = []
+        numero_atual: int | None = None
+        linhas_codigo: list[str] = []
 
         def _salvar_resposta_atual():
             nonlocal numero_atual, linhas_codigo
@@ -75,12 +83,7 @@ class KnowledgeLoader:
             linha = raw.rstrip("\n")
             stripped = linha.strip()
 
-            m_questao  = self._RE_QUESTAO.match(stripped)
             m_resposta = self._RE_RESPOSTA.match(stripped)
-
-            if m_questao:
-                titulos[int(m_questao.group(1))] = m_questao.group(2)
-                continue
 
             if m_resposta:
                 _salvar_resposta_atual()          # fecha o bloco anterior
@@ -89,24 +92,32 @@ class KnowledgeLoader:
 
             if numero_atual is not None:          # dentro de um bloco de resposta
                 linhas_codigo.append(linha)
+                continue
+
+            # Fora de bloco de resposta: captura o enunciado original.
+            # Assim, linhas tipo "1 - Soma" dentro de código nunca viram título.
+            m_enunciado = self._RE_ENUNCIADO.match(stripped)
+            if m_enunciado:
+                enunciados[int(m_enunciado.group(1))] = m_enunciado.group(2)
 
         _salvar_resposta_atual()                  # fecha o último bloco
-        return titulos, respostas
+        return enunciados, respostas
 
     def _montar_exercicios(
         self,
-        titulos: dict[int, str],
+        enunciados: dict[int, str],
         respostas: dict[int, str],
     ) -> list[Exercicio]:
-        """Combina títulos e respostas em objetos Exercicio ordenados."""
+        """Combina enunciados e respostas em objetos Exercicio ordenados."""
         if not respostas:
             raise ValueError("Nenhuma resposta válida encontrada no arquivo.")
 
         return [
             Exercicio(
                 numero=num,
-                titulo=titulos.get(num, f"Questão {num}"),
+                titulo=enunciados.get(num, ""),
                 codigo=respostas[num],
+                enunciado_original=enunciados.get(num, ""),
             )
             for num in sorted(respostas)
         ]

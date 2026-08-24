@@ -41,7 +41,15 @@ class ReportExporter:
     # ------------------------------------------------------------------
 
     def _formatar(self, pares: list[tuple[Exercicio, Pergunta]]) -> str:
-        """Monta o texto completo do relatório."""
+        """
+        Monta o texto completo do relatório.
+
+        Fase 3.1 — o rótulo do bloco de código distingue a ORIGEM da
+        pergunta ("Código do aluno que originou esta pergunta") da resposta
+        futura do aluno à nova pergunta (seção "resposta N -").
+        O código de origem NUNCA é exportado como "Seu código:", para que
+        o parser da correção não o confunda com codigo_base.
+        """
         linhas = []
 
         for idx, (exercicio, pergunta) in enumerate(pares, start=1):
@@ -53,14 +61,19 @@ class ReportExporter:
             )
             linhas.append(separador)
             linhas.append("")
+            linhas.append("Enunciado original:")
+            linhas.append(exercicio.enunciado_original)
+            linhas.append("")
+            linhas.append("Código do aluno que originou esta pergunta:")
+            linhas.append("-" * 40)
+            linhas.append(exercicio.codigo_aluno_anterior)
+            linhas.append("-" * 40)
+            linhas.append("")
             linhas.append(
                 f"{idx} - [{pergunta.tipo.upper()}] {pergunta.pergunta}"
             )
             linhas.append("")
-            linhas.append("Seu código:")
-            linhas.append("-" * 40)
-            linhas.append(exercicio.codigo)
-            linhas.append("-" * 40)
+            linhas.append(f"resposta {idx} -")
             linhas.append("")
             linhas.append("")   # espaço extra entre blocos
 

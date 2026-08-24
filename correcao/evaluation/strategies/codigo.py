@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 from config import LIMIAR_APROX
+from evaluation.evidencia import FONTE_AUSENTE, FONTE_EXECUCAO
 from execution.runner import (
     executar_codigo_python,
     executar_codigo_python_sem_entrada,
@@ -77,15 +78,19 @@ def avaliar(
             idx=q.idx, tipo=q.tipo, nota=0.0, status="erro",
             feedback="Resposta de código vazia.",
             detalhes=["Nenhum código foi fornecido pelo aluno."],
+            fonte_evidencia=FONTE_AUSENTE,
         )
 
     # ── 2. Sintaxe ────────────────────────────────────────────────────────────
     ok_sintaxe, erro_sintaxe = verificar_sintaxe_python(codigo_aluno)
     if not ok_sintaxe:
+        # A nota 0 vem de evidência objetiva: o compilador Python foi
+        # executado sobre o código e rejeitou. Fonte = execucao.
         return Resultado(
             idx=q.idx, tipo=q.tipo, nota=0.0, status="erro",
             feedback=f"Erro de sintaxe: {erro_sintaxe}",
             detalhes=["O código não compila em Python."],
+            fonte_evidencia=FONTE_EXECUCAO,
         )
 
     # ── 3. Sem testes ─────────────────────────────────────────────────────────
@@ -99,12 +104,14 @@ def avaliar(
                 idx=q.idx, tipo=q.tipo, nota=0.0, status="erro",
                 feedback=f"Erro ao executar o código: {motivo_exec}",
                 detalhes=[normalizar_texto(execucao.get("stderr", ""))],
+                fonte_evidencia=FONTE_EXECUCAO,
             )
 
         return Resultado(
             idx=q.idx, tipo=q.tipo, nota=10.0, status="ok",
             feedback="Código executado corretamente (sem necessidade de testes com input).",
             detalhes=[f"Saída obtida:\n{saida_obtida if saida_obtida else '(vazia)'}"],
+            fonte_evidencia=FONTE_EXECUCAO,
         )
 
     # ── 4. Com testes ─────────────────────────────────────────────────────────
@@ -181,4 +188,5 @@ def avaliar(
         feedback=feedback,
         detalhes=detalhes,
         testes_executados=execucoes,
+        fonte_evidencia=FONTE_EXECUCAO,
     )
