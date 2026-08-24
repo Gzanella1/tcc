@@ -36,12 +36,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import replace
+from typing import Any, Dict, List
 
 from config import USAR_LLM
 from evaluation.evidencia import (
     FONTE_AUSENTE,
     FONTE_EXECUCAO,
     FONTE_LLM,
+    TIPO_EXECUCAO,
+    TIPO_LLM,
 )
 from evaluation.strategies.codigo import avaliar as avaliar_codigo
 from llm.client import chamar_llm_json
@@ -194,6 +197,33 @@ def _resultado_sem_testes(q: Questao) -> Resultado:
     )
 
 
+def _evidencia_llm_requisitos(
+    obj: dict,
+    nota_llm: float,
+    status_llm: str,
+) -> Dict[str, Any]:
+    """
+    Monta o registro de evidência LLM a partir da resposta JSON do modelo,
+    preservando integralmente as listas de requisitos (sem truncamento).
+    """
+    def _lista(valor: Any) -> List[str]:
+        if isinstance(valor, list):
+            return [str(x) for x in valor]
+        return [str(valor)] if valor else []
+
+    return {
+        "tipo": TIPO_LLM,
+        "resumo": f"Verificação dos requisitos do enunciado via LLM (nota {nota_llm:.2f}, status '{status_llm}').",
+        "dados": {
+            "nota": nota_llm,
+            "status": status_llm,
+            "requisitos_identificados": _lista(obj.get("requisitos_identificados", [])),
+            "requisitos_atendidos": _lista(obj.get("requisitos_atendidos", [])),
+            "faltantes": _lista(obj.get("faltantes", [])),
+        },
+    }
+
+
 def avaliar(q: Questao) -> Resultado:
     # 1. Extrai o código enviado pelo aluno.
     codigo_aluno = _extrair_codigo_resposta(q.resposta_aluno)
@@ -293,13 +323,29 @@ def avaliar(q: Questao) -> Resultado:
     #   - com testes  → predominante "execucao" (70% do peso), com o
     #     componente LLM registrado nos detalhes;
     #   - sem testes  → nota vem só do LLM → "llm".
+    #
+    # Etapa 4.3: a mesma composição ganha representação estruturada em
+    # evidencias — registros ponderados 0.7/0.3 quando há testes, ou apenas
+    # o registro LLM quando a nota depende só dele. A fonte registrada
+    # permanece EXATAMENTE a política da Etapa 4.2.
     if testes:
         fonte_final = FONTE_EXECUCAO
         finais.append(
             "Nota composta: 70% execução de testes + 30% avaliação via LLM."
         )
+        # Herda as evidências da parte objetiva (execução), marcando o peso,
+        # sem mutar o Resultado original nem duplicar os detalhes por caso.
+        evidencias_finais: List[Dict[str, Any]] = []
+        for ev in resultado_testes.evidencias:
+            copia = dict(ev)
+            copia["peso"] = 0.7
+            evidencias_finais.append(copia)
+        evidencias_finais.append(
+            {**_evidencia_llm_requisitos(obj, nota_llm, status_llm), "peso": 0.3}
+        )
     else:
         fonte_final = FONTE_LLM
+        evidencias_finais = [_evidencia_llm_requisitos(obj, nota_llm, status_llm)]
 
     return Resultado(
         idx=q.idx,
@@ -310,4 +356,5 @@ def avaliar(q: Questao) -> Resultado:
         detalhes=resultado_testes.detalhes + finais,
         testes_executados=resultado_testes.testes_executados,
         fonte_evidencia=fonte_final,
+        evidencias=evidencias_finais,
     )

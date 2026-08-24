@@ -43,6 +43,33 @@ FONTES_VALIDAS = frozenset(
     }
 )
 
+# ─── Etapa 4.3: contrato das evidências estruturadas ─────────────────────────
+#
+# Cada evidência é um dicionário serializável registrado em
+# Resultado.evidencias:
+#
+#     {
+#         "tipo":   TIPO_*,
+#         "resumo": "frase curta legível",
+#         "dados":  {...payload específico, só tipos primitivos...},
+#         "peso":   float  (opcional; apenas quando há composição de fontes)
+#     }
+#
+# A ausência de evidência NÃO tem categoria própria na lista:
+#     evidencias == []  <=>  fonte_evidencia == FONTE_AUSENTE
+
+TIPO_EXECUCAO = "execucao"
+TIPO_LLM = "llm"
+TIPO_HEURISTICA = "heuristica"
+
+TIPOS_EVIDENCIA_VALIDOS = frozenset(
+    {
+        TIPO_EXECUCAO,
+        TIPO_LLM,
+        TIPO_HEURISTICA,
+    }
+)
+
 
 def normalizar_fonte(valor: Any) -> str:
     """

@@ -80,6 +80,15 @@ class Resultado:
     # caminho existente que cria Resultado sem informar a fonte.
     fonte_evidencia: str = FONTE_AUSENTE
 
+    # Contrato novo (Etapa 4.3): evidências concretas e estruturadas que
+    # sustentaram a avaliação (resumo; o detalhe completo permanece nos
+    # campos específicos como testes_executados). Cada item é um dicionário
+    # serializável {"tipo", "resumo", "dados"[, "peso"]}; tipos válidos em
+    # evaluation/evidencia.py: "execucao" | "llm" | "heuristica".
+    # Ausência de evidência = lista vazia (fonte_evidencia == "ausente").
+    # Campo no FINAL do dataclass para preservar construção posicional.
+    evidencias: List[Dict[str, Any]] = field(default_factory=list)
+
     def __post_init__(self) -> None:
         """
         Garante que a origem da evidência transportada seja sempre um dos

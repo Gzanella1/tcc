@@ -20,7 +20,13 @@ Estratégia:
 
 from __future__ import annotations
 
-from evaluation.evidencia import FONTE_AUSENTE, FONTE_HEURISTICA, FONTE_LLM
+from evaluation.evidencia import (
+    FONTE_AUSENTE,
+    FONTE_HEURISTICA,
+    FONTE_LLM,
+    TIPO_HEURISTICA,
+    TIPO_LLM,
+)
 from llm.client import chamar_llm_json
 from models.questao import Questao, Resultado
 from utils.text import normalizar_texto, sem_acentos
@@ -115,6 +121,10 @@ Retorne APENAS JSON válido neste formato:
         except Exception:
             nota = 0.0
 
+        # Etapa 4.3: captura a nota original ANTES do piso heurístico,
+        # para registrar explicitamente se o piso ajustou o valor.
+        nota_original = nota
+
         status = str(obj.get("status", "parcial")).strip().lower()
         if status not in {"ok", "parcial", "erro"}:
             status = "parcial"
@@ -123,6 +133,8 @@ Retorne APENAS JSON válido neste formato:
         melhorias = obj.get("melhorias", [])
         if not isinstance(acertos,   list): acertos   = [str(acertos)]
         if not isinstance(melhorias, list): melhorias = [str(melhorias)]
+
+        piso_aplicado = bool(conceito_ok and nota_original < nota_minima)
 
         if conceito_ok:
             nota = max(nota, nota_minima)
@@ -135,6 +147,24 @@ Retorne APENAS JSON válido neste formato:
         if melhorias:
             detalhes.append("Melhorias: " + "; ".join(str(x) for x in melhorias[:5]))
 
+        # Evidência estruturada preserva as listas COMPLETAS (sem truncamento
+        # de exibição aplicado aos detalhes) e a intervenção do piso.
+        evidencia_llm = {
+            "tipo": TIPO_LLM,
+            "resumo": (
+                f"Avaliação via LLM (nota original {nota_original:.2f}"
+                + (f", piso de {nota_minima:.1f} aplicado" if piso_aplicado else "")
+                + ")."
+            ),
+            "dados": {
+                "nota_original": nota_original,
+                "status": status,
+                "acertos": acertos,
+                "melhorias": melhorias,
+                "piso_aplicado": piso_aplicado,
+            },
+        }
+
         return Resultado(
             idx=q.idx,
             tipo=q.tipo,
@@ -143,9 +173,19 @@ Retorne APENAS JSON válido neste formato:
             feedback=str(obj.get("feedback", "")).strip() or feedback_base,
             detalhes=detalhes if detalhes else [feedback_base],
             fonte_evidencia=FONTE_LLM,
+            evidencias=[evidencia_llm],
         )
 
     # ── Fallback quando o LLM não responde ───────────────────────────────────
+    evidencia_heuristica = {
+        "tipo": TIPO_HEURISTICA,
+        "resumo": "Nota definida por regra objetiva local porque o LLM não retornou JSON válido.",
+        "dados": {
+            "motivo": "llm_sem_json_valido",
+            "conceito_ok": conceito_ok,
+        },
+    }
+
     if conceito_ok:
         return Resultado(
             idx=q.idx,
@@ -155,6 +195,7 @@ Retorne APENAS JSON válido neste formato:
             feedback=feedback_base,
             detalhes=["Correção feita por regra objetiva porque o LLM não retornou JSON válido."],
             fonte_evidencia=FONTE_HEURISTICA,
+            evidencias=[evidencia_heuristica],
         )
 
     return Resultado(
@@ -165,4 +206,5 @@ Retorne APENAS JSON válido neste formato:
         feedback=feedback_base,
         detalhes=["Correção feita por fallback heurístico porque o LLM não retornou JSON válido."],
         fonte_evidencia=FONTE_HEURISTICA,
+        evidencias=[dict(evidencia_heuristica)],
     )

@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 from config import LIMIAR_APROX
-from evaluation.evidencia import FONTE_AUSENTE, FONTE_EXECUCAO
+from evaluation.evidencia import FONTE_AUSENTE, FONTE_EXECUCAO, TIPO_EXECUCAO
 from execution.runner import (
     executar_codigo_python,
     executar_codigo_python_sem_entrada,
@@ -91,6 +91,15 @@ def avaliar(
             feedback=f"Erro de sintaxe: {erro_sintaxe}",
             detalhes=["O código não compila em Python."],
             fonte_evidencia=FONTE_EXECUCAO,
+            evidencias=[{
+                "tipo": TIPO_EXECUCAO,
+                "resumo": "Compilador Python executado sobre o código e rejeitou (erro de sintaxe).",
+                "dados": {
+                    "modo": "sintaxe",
+                    "compilou": False,
+                    "motivo": erro_sintaxe,
+                },
+            }],
         )
 
     # ── 3. Sem testes ─────────────────────────────────────────────────────────
@@ -105,6 +114,15 @@ def avaliar(
                 feedback=f"Erro ao executar o código: {motivo_exec}",
                 detalhes=[normalizar_texto(execucao.get("stderr", ""))],
                 fonte_evidencia=FONTE_EXECUCAO,
+                evidencias=[{
+                    "tipo": TIPO_EXECUCAO,
+                    "resumo": f"Código executado sem entrada e falhou: {motivo_exec}.",
+                    "dados": {
+                        "modo": "sem_testes",
+                        "erro_execucao": True,
+                        "motivo": motivo_exec,
+                    },
+                }],
             )
 
         return Resultado(
@@ -112,6 +130,14 @@ def avaliar(
             feedback="Código executado corretamente (sem necessidade de testes com input).",
             detalhes=[f"Saída obtida:\n{saida_obtida if saida_obtida else '(vazia)'}"],
             fonte_evidencia=FONTE_EXECUCAO,
+            evidencias=[{
+                "tipo": TIPO_EXECUCAO,
+                "resumo": "Código executado sem entrada, sem erro.",
+                "dados": {
+                    "modo": "sem_testes",
+                    "erro_execucao": False,
+                },
+            }],
         )
 
     # ── 4. Com testes ─────────────────────────────────────────────────────────
@@ -189,4 +215,14 @@ def avaliar(
         detalhes=detalhes,
         testes_executados=execucoes,
         fonte_evidencia=FONTE_EXECUCAO,
+        evidencias=[{
+            "tipo": TIPO_EXECUCAO,
+            "resumo": f"{passou}/{total} casos de teste executados contra o código do aluno.",
+            "dados": {
+                "modo": "com_testes",
+                "testes_total": total,
+                "testes_passaram": passou,
+                "referencia": "testes_executados",
+            },
+        }],
     )

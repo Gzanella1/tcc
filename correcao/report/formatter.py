@@ -17,6 +17,39 @@ from models.questao import Questao, Resultado
 from utils.text import normalizar_texto
 
 
+def _formatar_valor_evidencia(valor) -> str:
+    """Formata um valor de evidência de forma compacta e legível."""
+    if isinstance(valor, bool):
+        return "sim" if valor else "não"
+    if isinstance(valor, list):
+        if not valor:
+            return "(vazia)"
+        mostrados = ", ".join(str(v) for v in valor[:3])
+        sufixo = f" …(+{len(valor) - 3})" if len(valor) > 3 else ""
+        return mostrados + sufixo
+    texto = str(valor)
+    return texto if len(texto) <= 200 else texto[:200].rstrip() + "…"
+
+
+def _secao_evidencias(res: Resultado) -> List[str]:
+    """
+    Renderiza a seção de evidências estruturadas (Etapa 4.3).
+    Retorna lista vazia quando não há evidências registradas.
+    """
+    if not res.evidencias:
+        return []
+
+    linhas: List[str] = ["", "Evidências:"]
+    for ev in res.evidencias:
+        tipo = str(ev.get("tipo", "?"))
+        peso = f" | peso {ev['peso']}" if "peso" in ev else ""
+        linhas.append(f"- [{tipo}{peso}] {ev.get('resumo', '')}")
+        dados = ev.get("dados") or {}
+        for chave, valor in dados.items():
+            linhas.append(f"    {chave}: {_formatar_valor_evidencia(valor)}")
+    return linhas
+
+
 def formatar_resultado(res: Resultado, q: Questao) -> str:
     """
     Formata o resultado de uma questão como bloco de texto legível,
@@ -47,6 +80,8 @@ def formatar_resultado(res: Resultado, q: Questao) -> str:
         linhas.append("Detalhes:")
         for d in res.detalhes:
             linhas.append(f"- {d}")
+
+    linhas.extend(_secao_evidencias(res))
 
     if res.testes_executados:
         linhas.append("")

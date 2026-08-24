@@ -30,7 +30,7 @@ import re
 from typing import List, Tuple
 
 from config import LIMIAR_APROX, LIMIAR_EXATO
-from evaluation.evidencia import FONTE_AUSENTE, FONTE_EXECUCAO
+from evaluation.evidencia import FONTE_AUSENTE, FONTE_EXECUCAO, TIPO_EXECUCAO
 from execution.runner import executar_codigo_python
 from models.questao import Questao, Resultado
 from utils.text import comparar_textos, extrair_codigo, normalizar_texto
@@ -268,6 +268,16 @@ def _avaliar_com_pares(
         detalhes=detalhes,
         testes_executados=testes_exec,
         fonte_evidencia=FONTE_EXECUCAO,
+        evidencias=[{
+            "tipo": TIPO_EXECUCAO,
+            "resumo": f"{passou}/{total} previsões verificadas executando o código-base.",
+            "dados": {
+                "modo": "com_pares",
+                "casos_total": total,
+                "casos_passaram": passou,
+                "referencia": "testes_executados",
+            },
+        }],
     )
 
 
@@ -326,6 +336,18 @@ def _avaliar_modo_legado(q: Questao, codigo_base: str) -> Resultado:
         }],
         saida_correta=saida_correta,
         fonte_evidencia=FONTE_EXECUCAO,
+        evidencias=[{
+            "tipo": TIPO_EXECUCAO,
+            "resumo": (
+                f"Saída do código-base comparada diretamente com a resposta "
+                f"do aluno (similaridade={sim:.3f})."
+            ),
+            "dados": {
+                "modo": "legado",
+                "similaridade": round(sim, 3),
+                "referencia": "testes_executados",
+            },
+        }],
     )
 
 
