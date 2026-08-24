@@ -17,6 +17,21 @@ from config import TESTES_ALVO, USAR_LLM
 from llm.client import chamar_llm_json
 from models.questao import Questao
 from utils.text import normalizar_texto, codigo_tem_input, extrair_prompts_input
+
+# ─── Etapa 4.4: procedência da régua de testes ────────────────────────────────
+# Chave INTERNA "_origem" nos dicionários de teste; não faz parte da interface
+# pública documentada (entrada/saida/obs). Valores válidos: "enunciado" | "llm".
+ORIGEM_ENUNCIADO = "enunciado"
+ORIGEM_LLM = "llm"
+_CHAVE_ORIGEM = "_origem"
+
+
+def _com_origem(teste: Dict[str, str], origem: str) -> Dict[str, str]:
+    """Copia um dicionário de teste adicionando a procedência interna."""
+    novo = dict(teste)
+    novo[_CHAVE_ORIGEM] = origem
+    return novo
+
 # ─── Deduplicação ────────────────────────────────────────────────────────────
 
 def deduplicar_testes(testes: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -29,11 +44,16 @@ def deduplicar_testes(testes: List[Dict[str, str]]) -> List[Dict[str, str]]:
         if entrada in vistos:
             continue
         vistos.add(entrada)
-        saida.append({
+        novo = {
             "entrada": entrada,
             "saida":   normalizar_texto(str(t.get("saida", ""))),
             "obs":     normalizar_texto(str(t.get("obs", ""))),
-        })
+        }
+        # Etapa 4.4: a procedência acompanha o teste que sobrevive à
+        # deduplicação (a regra de qual teste sobrevive permanece a mesma).
+        if t.get(_CHAVE_ORIGEM):
+            novo[_CHAVE_ORIGEM] = str(t[_CHAVE_ORIGEM])
+        saida.append(novo)
 
     return saida
 
@@ -71,11 +91,15 @@ def validar_testes(testes: List[Dict], requer_input: bool = False) -> List[Dict[
         if requer_input and entrada == "":
             continue
 
-        validos.append({
+        novo = {
             "entrada": entrada,
             "saida": saida,
             "obs": obs,
-        })
+        }
+        # Etapa 4.4: preserva a procedência interna na reconstrução.
+        if t.get(_CHAVE_ORIGEM):
+            novo[_CHAVE_ORIGEM] = str(t[_CHAVE_ORIGEM])
+        validos.append(novo)
 
     return validos
 
@@ -165,6 +189,7 @@ REGRAS:
                         "entrada": str(entrada),
                         "saida": str(saida),
                         "obs": str(item.get("obs", "")),
+                        "_origem": ORIGEM_LLM,
                     })
 
     return validar_testes(testes, requer_input=usa_input)
@@ -209,16 +234,22 @@ def obter_testes_explicitos(q: Questao) -> List[Dict[str, str]]:
                     "entrada": entrada,
                     "saida": saida,
                     "obs": "Caso explícito do enunciado",
+                    "_origem": ORIGEM_ENUNCIADO,
                 })
         else:
             testes.append({
                 "entrada": entrada,
                 "saida": saida,
                 "obs": "Caso explícito do enunciado",
+                "_origem": ORIGEM_ENUNCIADO,
             })
 
     if q.testes:
-        testes.extend(q.testes)
+        # Testes vindos dos próprios dados da questão também são do enunciado.
+        # Cópia para não mutar os dicionários originais da Questao.
+        testes.extend(
+            _com_origem(dict(t), ORIGEM_ENUNCIADO) for t in q.testes
+        )
 
     return deduplicar_testes(testes)
 

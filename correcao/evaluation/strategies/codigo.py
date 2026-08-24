@@ -206,6 +206,15 @@ def avaliar(
     else:
         status, feedback = "erro", f"Apenas {passou}/{total} testes passaram."
 
+    # Etapa 4.4: procedência da régua de testes. "_origem" é chave interna do
+    # fluxo de geração (tests/generator.py); quando ausente — ex.: testes
+    # fornecidos diretamente ao avaliador — o caso é tratado como vindo do
+    # enunciado/questão (nunca foi produto da geração por LLM neste fluxo).
+    contagem_origem = {"enunciado": 0, "llm": 0}
+    for teste in testes:
+        origem = teste.get("_origem")
+        contagem_origem[origem if origem in contagem_origem else "enunciado"] += 1
+
     return Resultado(
         idx=q.idx,
         tipo=q.tipo,
@@ -222,6 +231,7 @@ def avaliar(
                 "modo": "com_testes",
                 "testes_total": total,
                 "testes_passaram": passou,
+                "testes_por_origem": dict(contagem_origem),
                 "referencia": "testes_executados",
             },
         }],
