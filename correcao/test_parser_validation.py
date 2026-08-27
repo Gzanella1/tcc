@@ -42,9 +42,10 @@ class ParserValidationTests(unittest.TestCase):
 
         self.assertEqual(q.idx, 10)
         self.assertEqual(q.codigo_base, "nome = input()\nprint(nome)")
-        self.assertEqual(q.codigo, q.codigo_base)
+        self.assertEqual(q.entradaTestes, "Ana")
         self.assertEqual(q.saida_esperada, "Ana")
-        self.assertEqual(q.saida, q.saida_esperada)
+        self.assertFalse(hasattr(q, "codigo"))
+        self.assertFalse(hasattr(q, "saida"))
         self.assertIsNone(validar_questao(q))
 
     def test_json_invalido_gera_questao_com_erro_de_entrada(self):
@@ -74,7 +75,7 @@ O problema é que a atualização do valor precisa preservar o restante correto.
 
         self.assertEqual(q.tipo, "correcao")
         self.assertTrue(q.codigo_base)
-        self.assertEqual(q.codigo_aluno, "")
+        self.assertEqual(q.codigo_aluno_resposta, "")
         self.assertEqual(q.extras.get("resposta_formato"), "texto")
         self.assertTrue(resposta_correcao_eh_textual(q))
         self.assertIsNone(validar_questao(q))
@@ -99,7 +100,7 @@ resposta 1 -
 
         q = self._carregar_texto(texto)[0]
 
-        self.assertEqual(q.entrada, "2\n3\n4\n5\n")
+        self.assertEqual(q.entradaTestes, "2\n3\n4\n5\n")
         self.assertIsNone(validar_questao(q))
 
     def test_modificacao_separa_codigo_base_e_codigo_aluno(self):
@@ -123,7 +124,7 @@ print(nome)
         q = self._carregar_texto(texto)[0]
 
         self.assertIn("print(nome)", q.codigo_base)
-        self.assertEqual(q.codigo_aluno, 'nome = input("Nome: ")\nprint(nome)\nprint(nome)')
+        self.assertEqual(q.codigo_aluno_resposta, 'nome = input("Nome: ")\nprint(nome)\nprint(nome)')
         self.assertEqual(q.extras.get("resposta_formato"), "codigo")
         self.assertIsNone(validar_questao(q))
 
@@ -132,7 +133,7 @@ print(nome)
             idx=1,
             tipo="previsao",
             enunciado="Qual sera a saida?",
-            entrada="1\n",
+            entradaTestes="1\n",
             resposta_aluno="1",
         )
 
@@ -163,7 +164,7 @@ print(nome)
             tipo="modificacao",
             enunciado="Modifique o programa para imprimir B.",
             codigo_base='print("A")',
-            codigo_aluno='print("B")',
+            codigo_aluno_resposta='print("B")',
         )
 
         resultado = validar_questao(q)
@@ -181,7 +182,7 @@ print(nome)
 
         q = self._carregar_texto(conteudo)[0]
 
-        self.assertEqual(q.codigo_aluno, "nome = input()\nprint(nome)\nprint(nome)")
+        self.assertEqual(q.codigo_aluno_resposta, "nome = input()\nprint(nome)\nprint(nome)")
         self.assertEqual(q.extras.get("resposta_formato"), "codigo")
         self.assertIsNone(validar_questao(q))
 
@@ -197,7 +198,7 @@ print(nome)
         q = self._carregar_texto(conteudo)[0]
 
         self.assertEqual(q.codigo_base, "print('base')")
-        self.assertEqual(q.codigo_aluno, "print('aluno')")
+        self.assertEqual(q.codigo_aluno_resposta, "print('aluno')")
         self.assertEqual(q.resposta_aluno, "Resposta em texto livre.")
         self.assertEqual(q.extras.get("resposta_formato"), "codigo")
 
@@ -212,8 +213,8 @@ print(nome)
         q = self._carregar_texto(conteudo)[0]
 
         self.assertEqual(q.codigo_base, "print('base')")
-        self.assertEqual(q.codigo, "print('base')")
-        self.assertEqual(q.codigo_aluno, "")
+        self.assertFalse(hasattr(q, "codigo"))
+        self.assertEqual(q.codigo_aluno_resposta, "")
         self.assertEqual(q.resposta_aluno, "Ele imprime algo.")
         self.assertEqual(q.extras.get("resposta_formato"), "texto")
 
@@ -256,7 +257,7 @@ resposta 2 -
         self.assertEqual(questoes[0].tipo, "descritiva")
         self.assertEqual(questoes[0].codigo_base, 'print("ola")')
         self.assertTrue(questoes[0].rubrica)
-        self.assertEqual(questoes[1].entrada, "1\n2\n")
+        self.assertEqual(questoes[1].entradaTestes, "1\n2\n")
         self.assertIsNone(validar_questao(questoes[0]))
         self.assertIsNone(validar_questao(questoes[1]))
 

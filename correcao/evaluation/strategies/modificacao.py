@@ -6,6 +6,15 @@ evaluation/strategies/modificacao.py
 
 Avaliador para questões do tipo MODIFICAÇÃO.
 
+Contrato canônico:
+    - codigo_aluno_resposta : o NOVO código do aluno — É o objeto corrigido
+      (execução → testes → avaliação LLM → nota).
+    - codigo_base           : código ANTERIOR do aluno — APENAS contexto/
+      apoio no prompt; nunca é corrigido, nunca é gabarito, nunca gera a
+      saída esperada da nova resposta e nunca substitui codigo_aluno_resposta.
+    - codigo_aluno_resposta NUNCA participa da geração da própria régua de
+      testes (anti-autocircularidade).
+
 Estratégia combinada:
     - Se houver testes:
         70% → execução do código do aluno contra casos de teste
@@ -34,8 +43,6 @@ Rastreabilidade da evidência (Etapa 4.2) — política para a combinação
 
 from __future__ import annotations
 
-import re
-from dataclasses import replace
 from typing import Any, Dict, List
 
 from config import USAR_LLM
@@ -53,38 +60,11 @@ from tests.generator import obter_testes
 from utils.text import (
     codigo_tem_input,
     exige_saida_no_enunciado,
-    extrair_codigo,
     normalizar_texto,
 )
 
 
-def _extrair_codigo_resposta(resposta_aluno: str) -> str:
-    """
-    Extrai o código da resposta do aluno.
-
-    Remove rótulos comuns que aparecem no texto da resposta, como:
-        Código:
-        Seu código:
-
-    Isso evita que o corretor tente compilar essas linhas como Python.
-    """
-    if not resposta_aluno:
-        return ""
-
-    texto = normalizar_texto(resposta_aluno)
-
-    # Remove rótulos que não fazem parte do código Python.
-    texto = re.sub(
-        r"(?im)^\s*(?:seu\s+)?c[oó]digo\s*:?\s*$",
-        "",
-        texto
-    ).strip()
-
-    codigo = extrair_codigo(texto)
-    return codigo.strip() or texto.strip()
-
-
-def _avaliar_requisitos_llm(q: Questao, codigo_aluno: str) -> dict:
+def _avaliar_requisitos_llm(q: Questao, codigo_aluno_resposta: str) -> dict:
     """Chama o LLM para checar aderência do código do aluno ao enunciado."""
     precisa_saida = exige_saida_no_enunciado(q.enunciado)
 
@@ -95,17 +75,17 @@ Você é um corretor rigoroso de questões de MODIFICAÇÃO de código Python.
 CONTEXTO
 =========================
 
-Enunciado:
+Enunciado (fonte dos requisitos):
 {q.enunciado}
 
 O enunciado pede saída/retorno explícito?
 { "SIM" if precisa_saida else "NÃO" }
 
-Código original:
-{q.codigo or "(não há)"}
+Código anterior do aluno (apenas contexto/apoio; não é gabarito):
+{q.codigo_base or "(não há)"}
 
-Código do aluno:
-{codigo_aluno or "(vazio)"}
+Código atual do aluno a ser avaliado:
+{codigo_aluno_resposta or "(vazio)"}
 
 =========================
 TAREFA
@@ -113,7 +93,7 @@ TAREFA
 
 1. Extraia os REQUISITOS explícitos do enunciado.
 2. Para cada requisito:
-   - verifique se foi atendido no código do aluno;
+   - verifique se foi atendido no CÓDIGO ATUAL do aluno;
    - justifique com base no código, sem inventar comportamento.
 3. Identifique:
    - o que foi atendido corretamente;
@@ -124,6 +104,9 @@ TAREFA
 REGRAS IMPORTANTES
 =========================
 
+- O "Código anterior do aluno" é APENAS contexto/apoio: NÃO é gabarito,
+  NÃO define o comportamento esperado e NÃO deve ser corrigido.
+  A avaliação é sobre o CÓDIGO ATUAL do aluno frente ao enunciado.
 - NÃO invente comportamento que não existe no código.
 - NÃO avalie estilo, nome de variável ou formatação.
 - Foque APENAS no que o enunciado pede.
@@ -225,17 +208,18 @@ def _evidencia_llm_requisitos(
 
 
 def avaliar(q: Questao) -> Resultado:
-    # 1. Extrai o código enviado pelo aluno.
-    codigo_aluno = _extrair_codigo_resposta(q.resposta_aluno)
+    # 1. O objeto da correção é EXCLUSIVAMENTE o novo código do aluno.
+    #    codigo_base é contexto/apoio e nunca é corrigido nem usado como
+    #    régua; codigo_aluno_resposta nunca é injetado na geração de testes
+    #    (ele não pode gerar a própria régua de avaliação).
+    codigo_aluno_resposta = normalizar_texto(q.codigo_aluno_resposta)
 
-    # 2. Usa o código do aluno como base para detectar input()
-    # e gerar testes, caso q.codigo esteja vazio.
-    q_para_teste = replace(q, codigo=q.codigo or codigo_aluno)
+    # 2. Obtém testes explícitos ou gerados via LLM.
+    #    A régua vem de q.testes / saidaTestes / saida_esperada /
+    #    entradaTestes ou da interface declarada em codigo_base.
+    testes = obter_testes(q)
 
-    # 3. Obtém testes explícitos ou gerados via LLM.
-    testes = obter_testes(q_para_teste)
-
-    # 4. Avalia a parte objetiva.
+    # 3. Avalia a parte objetiva.
     #
     # Se houver testes, executa normalmente.
     #
@@ -244,20 +228,20 @@ def avaliar(q: Questao) -> Resultado:
     #
     # Se não houver testes e o código não tiver input(), pode executar sem entrada.
     if testes:
-        resultado_testes = avaliar_codigo(q_para_teste, codigo_aluno, testes)
-    elif codigo_tem_input(codigo_aluno):
+        resultado_testes = avaliar_codigo(q, codigo_aluno_resposta, testes)
+    elif codigo_tem_input(codigo_aluno_resposta):
         resultado_testes = _resultado_sem_testes(q)
     else:
-        resultado_testes = avaliar_codigo(q_para_teste, codigo_aluno, testes)
+        resultado_testes = avaliar_codigo(q, codigo_aluno_resposta, testes)
 
-    # 5. Se o LLM estiver desativado, retorna apenas a avaliação objetiva.
+    # 4. Se o LLM estiver desativado, retorna apenas a avaliação objetiva.
     if not USAR_LLM:
         return resultado_testes
 
-    # 6. Avalia os requisitos do enunciado via LLM.
-    obj = _avaliar_requisitos_llm(q, codigo_aluno)
+    # 5. Avalia os requisitos do enunciado via LLM.
+    obj = _avaliar_requisitos_llm(q, codigo_aluno_resposta)
 
-    # 7. Se o LLM falhar, retorna apenas a avaliação objetiva.
+    # 6. Se o LLM falhar, retorna apenas a avaliação objetiva.
     if not isinstance(obj, dict):
         return resultado_testes
 
@@ -289,7 +273,7 @@ def avaliar(q: Questao) -> Resultado:
             + "; ".join(str(x) for x in faltantes[:6])
         )
 
-    # 8. Calcula a nota final.
+    # 7. Calcula a nota final.
     #
     # Com testes:
     #   70% testes + 30% LLM
@@ -306,7 +290,7 @@ def avaliar(q: Questao) -> Resultado:
     else:
         nota_final = nota_llm
 
-    # 9. Define o status final.
+    # 8. Define o status final.
     if testes:
         if status_llm == "erro" and resultado_testes.status != "ok":
             status_final = "erro"

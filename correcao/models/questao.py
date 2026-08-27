@@ -5,6 +5,29 @@
 models/questao.py
 
 Definição dos modelos de dados principais do sistema de correção.
+
+Contrato canônico de campos (sem aliases, sem sincronização automática):
+
+- enunciado           : a nova tarefa/requisitos que o aluno deve cumprir.
+- resposta_aluno      : resposta BRUTA do aluno (texto livre; NÃO assuma que
+                        é código e NÃO use como substituto automático de
+                        codigo_aluno_resposta).
+- resposta_referencia : resposta/orientação de referência do professor.
+- rubrica             : critérios de avaliação.
+- codigo_base         : EXCLUSIVAMENTE o código ANTERIOR do próprio aluno,
+                        usado como contexto/apoio. NÃO é gabarito, não é
+                        solução oficial, não é resposta esperada, não é
+                        código do professor. Em MODIFICACAO não é corrigido,
+                        não é comparado para nota nem gera saída esperada.
+- codigo_aluno_resposta : o NOVO código produzido pelo aluno; é o objeto da
+                        correção (executável/testável). Nunca pode ser
+                        utilizado para gerar a própria régua de avaliação.
+- saida_esperada      : oráculo de saída explicitamente declarado. Nunca é
+                        auto-preenchido com execução de codigo_base ou com
+                        saída da própria resposta.
+- entradaTestes       : entrada associada aos testes (substitui "entrada").
+- saidaTestes         : saída associada aos testes (substitui "saida");
+                        distinta de saida_esperada.
 """
 
 from __future__ import annotations
@@ -23,43 +46,13 @@ class Questao:
     resposta_aluno: str = ""
     resposta_referencia: str = ""
     rubrica: str = ""
-
-    # Contrato novo: separa o codigo fornecido pela questao do codigo
-    # entregue pelo aluno como resposta.
     codigo_base: str = ""
-    codigo_aluno: str = ""
-
-    # Contrato novo: nome explicito para o oraculo de saida.
+    codigo_aluno_resposta: str = ""
     saida_esperada: str = ""
-
-    # Campos legados preservados para compatibilidade com as estrategias atuais.
-    codigo: str = ""
-    entrada: str = ""
-    saida: str = ""
+    entradaTestes: str = ""
+    saidaTestes: str = ""
     testes: List[Dict[str, str]] = field(default_factory=list)
     extras: Dict[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        """
-        Mantem compatibilidade entre o contrato novo e os nomes antigos.
-
-        - codigo_base <-> codigo
-        - saida_esperada <-> saida
-        - codigo_aluno pode preencher resposta_aluno quando a entrada vier
-          em JSON estruturado apenas com codigo_aluno.
-        """
-        if not self.codigo_base and self.codigo:
-            self.codigo_base = self.codigo
-        if not self.codigo and self.codigo_base:
-            self.codigo = self.codigo_base
-
-        if not self.saida_esperada and self.saida:
-            self.saida_esperada = self.saida
-        if not self.saida and self.saida_esperada:
-            self.saida = self.saida_esperada
-
-        if self.codigo_aluno and not self.resposta_aluno:
-            self.resposta_aluno = self.codigo_aluno
 
 
 @dataclass

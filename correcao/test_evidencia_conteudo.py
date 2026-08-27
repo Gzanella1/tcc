@@ -163,7 +163,7 @@ class PrevisaoEvidenciaTests(BaseConteudoTests):
             tipo="previsao",
             enunciado="Qual será a saída?",
             codigo_base="n = input()\nprint(int(n) * 2)",
-            entrada="3\n",
+            entradaTestes="3\n",
             resposta_aluno="Entrada: 3\nSaída: 6",
         )
         res = estrategia_previsao.avaliar(q)
@@ -181,7 +181,7 @@ class PrevisaoEvidenciaTests(BaseConteudoTests):
             tipo="previsao",
             enunciado="Qual será a saída?",
             codigo_base="print(7)",
-            entrada="",
+            entradaTestes="",
             resposta_aluno="7",
         )
         res = estrategia_previsao.avaliar(q)
@@ -286,7 +286,7 @@ class ModificacaoEvidenciaTests(BaseConteudoTests):
             tipo="modificacao",
             enunciado="Faça o programa imprimir 2.",
             codigo_base="print(1)",
-            codigo_aluno="print(2)",
+            codigo_aluno_resposta="print(2)",
             testes=[{"entrada": "", "saida": "2\n", "obs": ""}],
         )
         res = estrategia_modificacao.avaliar(q)
@@ -318,7 +318,7 @@ class ModificacaoEvidenciaTests(BaseConteudoTests):
             tipo="modificacao",
             enunciado="Adicione um comentário ao programa.",
             codigo_base="x = 1",
-            codigo_aluno="x = 1  # comentário adicionado",
+            codigo_aluno_resposta="x = 1  # comentário adicionado",
         )
         res = estrategia_modificacao.avaliar(q)
         self.assertEqual(res.fonte_evidencia, FONTE_LLM)
@@ -334,7 +334,7 @@ class ModificacaoEvidenciaTests(BaseConteudoTests):
             tipo="modificacao",
             enunciado="Modifique o programa para ler dois valores.",
             codigo_base="a = input()\nprint(a)",
-            codigo_aluno="a = input()\nb = input()\nprint(a, b)",
+            codigo_aluno_resposta="a = input()\nb = input()\nprint(a, b)",
         )
         with mock.patch("evaluation.strategies.modificacao.USAR_LLM", False):
             res = estrategia_modificacao.avaliar(q)
@@ -349,7 +349,7 @@ class ModificacaoEvidenciaTests(BaseConteudoTests):
             tipo="modificacao",
             enunciado="Faça o programa imprimir 2.",
             codigo_base="print(1)",
-            codigo_aluno="print(2)",
+            codigo_aluno_resposta="print(2)",
             testes=[{"entrada": "", "saida": "2\n", "obs": ""}],
         )
         with mock.patch("evaluation.strategies.modificacao.USAR_LLM", False):
@@ -389,7 +389,7 @@ class ValidacaoAdministrativaEvidenciaTests(unittest.TestCase):
             tipo="correcao",
             enunciado="Corrija o código abaixo.",
             codigo_base="x = 1",
-            codigo_aluno="x = 2",
+            codigo_aluno_resposta="x = 2",
         )
         res = validar_questao(q)
         self.assertIsNotNone(res)
@@ -414,7 +414,7 @@ class InvarianteFonteEvidenciasTests(BaseConteudoTests):
         cenarios["previsao_pares"] = estrategia_previsao.avaliar(
             Questao(
                 idx=2, tipo="previsao", enunciado="Saída?",
-                codigo_base="print(7)", entrada="", resposta_aluno="Entrada: \nSaída: 7",
+                codigo_base="print(7)", entradaTestes="", resposta_aluno="Entrada: \nSaída: 7",
             )
         )
         cenarios["previsao_sem_codigo"] = estrategia_previsao.avaliar(
@@ -454,7 +454,7 @@ class InvarianteFonteEvidenciasTests(BaseConteudoTests):
             Questao(
                 idx=5, tipo="modificacao",
                 enunciado="Faça o programa imprimir 2.",
-                codigo_base="print(1)", codigo_aluno="print(2)",
+                codigo_base="print(1)", codigo_aluno_resposta="print(2)",
                 testes=[{"entrada": "", "saida": "2\n", "obs": ""}],
             )
         )
@@ -462,7 +462,7 @@ class InvarianteFonteEvidenciasTests(BaseConteudoTests):
             Questao(
                 idx=5, tipo="modificacao",
                 enunciado="Adicione um comentário ao programa.",
-                codigo_base="x = 1", codigo_aluno="x = 1  # comentário",
+                codigo_base="x = 1", codigo_aluno_resposta="x = 1  # comentário",
             )
         )
 
@@ -486,7 +486,7 @@ class InvarianteFonteEvidenciasTests(BaseConteudoTests):
                     idx=5, tipo="modificacao",
                     enunciado="Leia dois valores.",
                     codigo_base="a = input()\nprint(a)",
-                    codigo_aluno="a = input()\nb = input()\nprint(a, b)",
+                    codigo_aluno_resposta="a = input()\nb = input()\nprint(a, b)",
                 )
             )
 
@@ -536,7 +536,7 @@ class EvidenciaSerializavelTests(BaseConteudoTests):
             Questao(
                 idx=5, tipo="modificacao",
                 enunciado="Faça o programa imprimir 2.",
-                codigo_base="print(1)", codigo_aluno="print(2)",
+                codigo_base="print(1)", codigo_aluno_resposta="print(2)",
                 testes=[{"entrada": "", "saida": "2\n", "obs": ""}],
             )
         )

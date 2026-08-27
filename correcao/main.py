@@ -11,6 +11,16 @@ Fluxo:
     2. Corrige cada questão com o avaliador adequado
     3. Gera e salva o relatório de correção
 
+Rastreabilidade (Etapas 4.x):
+    Cada `Resultado` carrega, além de nota/status/feedback:
+        - fonte_evidencia → origem principal da avaliação
+          ("execucao", "llm", "heuristica" ou "ausente")
+        - evidencias      → registros estruturados no formato
+          {"tipo", "resumo", "dados"[, "peso"]}, que explicam como a nota
+          foi obtida (ex.: contagem de testes por procedência,
+          "testes_por_origem": enunciado x llm)
+    Essas informações aparecem na seção "Evidências:" do relatório gerado.
+
 Variáveis de ambiente relevantes (definidas em config.py):
     ARQUIVO_ENTRADA  → caminho do arquivo de questões
     ARQUIVO_SAIDA    → caminho do relatório de saída

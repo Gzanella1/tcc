@@ -87,7 +87,14 @@ def formatar_resultado(res: Resultado, q: Questao) -> str:
         linhas.append("")
         linhas.append("Testes executados:")
         for t in res.testes_executados:
-            linhas.append(f"- Teste {t.get('teste', '?')}: {'PASSOU' if t.get('ok') else 'FALHOU'}")
+            compat = t.get("compatibilidade", "aprovado")
+            if compat == "incompativel":
+                status_teste = "INCOMPATÍVEL"
+            elif t.get("ok"):
+                status_teste = "PASSOU"
+            else:
+                status_teste = "FALHOU"
+            linhas.append(f"- Teste {t.get('teste', '?')}: {status_teste}")
             if t.get("obs"):
                 linhas.append(f"  Obs: {t['obs']}")
             if t.get("entrada"):

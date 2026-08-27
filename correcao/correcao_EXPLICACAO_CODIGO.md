@@ -108,11 +108,36 @@ Atributos principais:
 - `feedback`: comentário principal ao estudante;
 - `detalhes`: observações adicionais;
 - `testes_executados`: registros dos testes executados;
-- `saida_correta`: saída calculada, quando aplicável.
+- `saida_correta`: saída calculada, quando aplicável;
+- `fonte_evidencia`: origem da evidência usada na nota (`execucao`, `llm`, `heuristica` ou `ausente`);
+- `evidencias`: lista de registros estruturados `{tipo, resumo, dados[, peso]}` que explicam como a nota foi obtida.
 
 ### Conexões
 
 `Questao` é produzida pelo parser e consumida pelas estratégias de correção. `Resultado` é produzido pelas estratégias e consumido pelo formatador de relatório.
+
+## `evaluation/evidencia.py`
+
+### Função do arquivo
+
+Centraliza a rastreabilidade da evidência. É a fonte única de verdade para os valores válidos de origem da avaliação.
+
+### Constantes principais
+
+| Constante | Valor | Significado |
+| --- | --- | --- |
+| `FONTE_EXECUCAO` | `execucao` | Nota derivada da execução real de código ou testes. |
+| `FONTE_LLM` | `llm` | Nota produzida pelo LLM. |
+| `FONTE_HEURISTICA` | `heuristica` | Nota por regra local, sem LLM e sem execução. |
+| `FONTE_AUSENTE` | `ausente` | Nenhuma evidência foi usada (valor padrão). |
+
+Também define os tipos de evidência válidos (`TIPO_EXECUCAO`, `TIPO_LLM`, `TIPO_HEURISTICA`) e a função:
+
+#### `normalizar_fonte(valor)`
+
+Recebe qualquer valor, normaliza caixa/espaços e retorna uma das fontes válidas; valores inválidos viram `ausente`.
+
+O contrato garantido é: `evidencias == []` equivale a `fonte_evidencia == "ausente"`.
 
 ## `parsing/parser.py`
 
@@ -407,11 +432,13 @@ Obtém casos de teste para avaliar código.
 
 #### `deduplicar_testes(testes)`
 
-Remove testes com entradas repetidas.
+Remove testes com entradas repetidas. A chave interna `_origem` acompanha o teste que sobrevive à remoção.
 
 #### `validar_testes(testes, requer_input)`
 
-Filtra testes inválidos, descartando casos sem saída esperada ou sem entrada quando o código exige `input()`.
+Filtra testes inválidos, descartando casos sem saída esperada ou sem entrada quando o código exige `input()`. Preserva a procedência `_origem` do teste original.
+
+Cada teste carrega a chave interna `_origem` (`ORIGEM_ENUNCIADO = "enunciado"` ou `ORIGEM_LLM = "llm"`), atribuída no ponto em que o teste é criado: casos explícitos do enunciado e testes da própria `Questao` recebem `enunciado`; casos gerados via LLM recebem `llm`. Essa marcação não faz parte da interface pública (`entrada`/`saida`/`obs`) e nunca aparece nos testes executados nem no relatório; ela alimenta a contagem `testes_por_origem` na evidência de execução.
 
 #### `_gerar_testes_llm_once(q, quantidade)`
 
@@ -523,6 +550,8 @@ Faz:
 5. remove prompts de `input()` antes de comparar;
 6. compara saída obtida e esperada;
 7. calcula nota proporcional aos testes aprovados.
+
+Além do resultado da correção, `avaliar()` registra evidências estruturadas em `Resultado.evidencias`: erro de sintaxe, execução sem testes ou contagem de casos no modo com testes. Nesse último modo, os `dados` incluem `testes_por_origem` (`{"enunciado": X, "llm": Y}`), somando a procedência interna `_origem` de cada teste; casos sem a chave são contados como `enunciado`. A soma X + Y é sempre igual ao total de testes executados.
 
 Retorna:
 
@@ -739,7 +768,8 @@ Recebe:
 Faz:
 
 - monta o bloco textual de uma questão;
-- inclui nota, status, feedback, enunciado, detalhes, saída calculada e testes executados.
+- inclui nota, status, feedback, enunciado, detalhes, saída calculada e testes executados;
+- quando `Resultado.evidencias` não estiver vazio, adiciona a seção "Evidências:", com uma linha por evidência no formato `- [tipo | peso] resumo`, seguida dos campos de `dados` (valores longos são truncados).
 
 Retorna:
 
@@ -771,6 +801,7 @@ Retorna:
 4. `previsao.py` calcula a saída real do código-base e compara com a previsão do estudante.
 5. `texto_llm.py` avalia respostas abertas com apoio semântico.
 6. `modificacao.py` combina testes automatizados e análise de requisitos.
-7. `formatter.py` transforma os resultados em relatório compreensível.
+7. `evidencia.py` garante que cada nota indique de onde veio sua evidência, com registros estruturados e rastreáveis.
+8. `formatter.py` transforma os resultados em relatório compreensível.
 
 Esses arquivos mostram a principal contribuição técnica da pasta `correcao`: integrar avaliação objetiva e avaliação semântica em um mesmo fluxo de correção formativa.

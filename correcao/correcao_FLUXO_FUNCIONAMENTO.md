@@ -15,7 +15,7 @@ Esse módulo é híbrido: algumas respostas são avaliadas por execução de có
 4. Identificação do tipo da questão
 5. Escolha da estratégia de correção
 6. Correção por testes, LLM ou estratégia combinada
-7. Geração de nota, status e feedback
+7. Geração de nota, status, feedback e evidências da correção
 8. Criação dos objetos Resultado
 9. Montagem do relatório final
 10. Escrita em conteudo/correcao.txt
@@ -187,6 +187,11 @@ Cada teste contém:
 - `saida`;
 - `obs`.
 
+Internamente, cada teste também carrega a chave `_origem` (`enunciado` ou
+`llm`), que registra a procedência do caso. Ela é preservada na validação e na
+deduplicação e, no fim, vira a contagem `testes_por_origem` na evidência de
+execução — sem aparecer nos testes executados nem no relatório.
+
 ## 9. Execução segura do código
 
 Quando uma resposta precisa ser executada, o módulo `execution/runner.py` cria um arquivo temporário com o código do estudante.
@@ -286,7 +291,9 @@ Esse objeto contém:
 - `feedback`: comentário principal;
 - `detalhes`: explicações complementares;
 - `testes_executados`: registros dos testes, quando houver;
-- `saida_correta`: saída calculada, quando aplicável.
+- `saida_correta`: saída calculada, quando aplicável;
+- `fonte_evidencia`: origem da evidência usada na nota (`execucao`, `llm`, `heuristica` ou `ausente`);
+- `evidencias`: registros estruturados `{tipo, resumo, dados[, peso]}` que explicam como a nota foi obtida.
 
 Os status mais comuns são:
 
@@ -333,6 +340,7 @@ Cada bloco individual pode conter:
 - saída calculada;
 - detalhes;
 - testes executados;
+- evidências da correção, quando houver (tipo, resumo e dados de cada evidência);
 - entrada, saída esperada, saída obtida e motivo da falha ou aprovação.
 
 ## 16. Saída final

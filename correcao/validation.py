@@ -5,6 +5,12 @@
 validation.py
 
 Validacao do contrato de dados de uma Questao antes da correcao.
+
+Contrato canônico:
+- MODIFICACAO exige apenas {enunciado, codigo_aluno_resposta}. O campo
+  codigo_base é OPCIONAL: sua ausência NÃO configura erro_entrada.
+- codigo_base nunca é exigido como régua; nunca é usado para gerar testes
+  que avaliem o próprio aluno (apenas para compreender a interface).
 """
 
 from __future__ import annotations
@@ -26,28 +32,30 @@ STATUS_PENDENTE = "pendente"
 # Campos cuja ausência indica apenas que o estudante ainda não respondeu.
 # Todos os demais campos pertencem à própria questão e, se ausentes,
 # configuram erro_entrada.
-_CAMPOS_DO_ALUNO = {"resposta_aluno", "codigo_aluno"}
+_CAMPOS_DO_ALUNO = {"resposta_aluno", "codigo_aluno_resposta"}
 
 
 def _tipo(q: Questao) -> str:
     return normalizar_tipo(q.tipo) or inferir_tipo(q.enunciado)
 
 
-def _codigo_base(q: Questao) -> str:
-    return normalizar_texto(q.codigo_base or q.codigo)
-
-
-def _saida_esperada(q: Questao) -> str:
-    return normalizar_texto(q.saida_esperada or q.saida)
-
-
 def _tem_testes_objetivos(q: Questao) -> bool:
-    return bool(q.testes or _saida_esperada(q))
+    """Há régua objetiva declarada (testes, saída de teste ou oráculo)?"""
+    return bool(
+        q.testes
+        or normalizar_texto(q.saida_esperada)
+        or normalizar_texto(q.saidaTestes)
+    )
 
 
 def _pode_gerar_testes(q: Questao) -> bool:
-    codigo = q.codigo_base or q.codigo or q.codigo_aluno or q.resposta_aluno
-    return codigo_tem_input(codigo)
+    """
+    Testes podem ser gerados a partir do CODIGO-BASE (interface do programa).
+
+    O código do aluno (codigo_aluno_resposta) NUNCA participa desta decisão:
+    ele não pode gerar a própria régua de avaliação.
+    """
+    return codigo_tem_input(q.codigo_base)
 
 
 def _resultado(q: Questao, status: str, feedback: str, detalhes: List[str]) -> Resultado:
@@ -74,7 +82,7 @@ def resposta_correcao_eh_textual(q: Questao) -> bool:
     if formato == "codigo":
         return False
 
-    if q.codigo_aluno:
+    if q.codigo_aluno_resposta:
         return False
 
     enunciado = sem_acentos((q.enunciado or "").lower())
@@ -95,11 +103,11 @@ def validar_questao(q: Questao) -> Optional[Resultado]:
     Retorna None quando a questao possui dados suficientes para seguir.
 
     Caso contrario, retorna um Resultado explicito que distingue tres
-    situacoes (contrato geração→correção, Fase 3):
+    situacoes (contrato geração→correção):
 
-    - erro_entrada : a QUESTÃO em si está incomposta/malformada;
+    - erro_entrada : a QUESTÃO em si está incompleta/malformada;
     - pendente     : a questão é válida, mas o estudante ainda não
-                     respondeu (resposta_aluno/codigo_aluno vazios);
+                     respondeu (resposta_aluno/codigo_aluno_resposta vazios);
     - inconclusivo : há resposta, mas faltam dados para correção objetiva.
 
     Nenhum dos casos produz uma nota aparentemente valida.
@@ -122,44 +130,43 @@ def validar_questao(q: Questao) -> Optional[Resultado]:
         _registrar("tipo")
 
     if tipo == "previsao":
-        if not _codigo_base(q):
+        if not normalizar_texto(q.codigo_base):
             _registrar("codigo_base")
-        if not normalizar_texto(q.entrada):
-            _registrar("entrada")
+        if not normalizar_texto(q.entradaTestes):
+            _registrar("entradaTestes")
         if not normalizar_texto(q.resposta_aluno):
             _registrar("resposta_aluno")
 
     elif tipo == "modificacao":
-        if not _codigo_base(q):
-            _registrar("codigo_base")
-        if not normalizar_texto(q.codigo_aluno):
-            _registrar("codigo_aluno")
+        if not normalizar_texto(q.codigo_aluno_resposta):
+            _registrar("codigo_aluno_resposta")
         if (
             not _tem_testes_objetivos(q)
             and not _pode_gerar_testes(q)
-            and normalizar_texto(q.codigo_aluno)
+            and normalizar_texto(q.codigo_aluno_resposta)
         ):
             inconclusivos.append(
                 "questao de modificacao sem testes, saida_esperada ou entrada que permita gerar testes"
             )
 
     elif tipo == "correcao":
-        if not normalizar_texto(q.resposta_aluno):
-            _registrar("resposta_aluno")
-
         if not resposta_correcao_eh_textual(q):
-            if not normalizar_texto(q.codigo_aluno):
-                _registrar("codigo_aluno")
+            if not normalizar_texto(q.codigo_aluno_resposta):
+                _registrar("codigo_aluno_resposta")
             if (
                 not _tem_testes_objetivos(q)
                 and not _pode_gerar_testes(q)
-                and normalizar_texto(q.codigo_aluno)
+                and normalizar_texto(q.codigo_aluno_resposta)
             ):
                 inconclusivos.append(
                     "questao de correcao de codigo sem testes, saida_esperada ou entrada que permita gerar testes"
                 )
         elif not normalizar_texto(q.rubrica or q.resposta_referencia):
+            if not normalizar_texto(q.resposta_aluno):
+                _registrar("resposta_aluno")
             _registrar("rubrica ou resposta_referencia")
+        elif not normalizar_texto(q.resposta_aluno):
+            _registrar("resposta_aluno")
 
     elif tipo in {"justificativa", "descritiva"}:
         if not normalizar_texto(q.resposta_aluno):
@@ -181,7 +188,7 @@ def validar_questao(q: Questao) -> Optional[Resultado]:
             q,
             STATUS_PENDENTE,
             "PENDENTE: pergunta gerada aguardando resposta do aluno. "
-            "Nao ha codigo_aluno/resposta_aluno ainda; nada foi avaliado.",
+            "Nao ha codigo_aluno_resposta/resposta_aluno ainda; nada foi avaliado.",
             [f"Aguardando resposta do aluno: {campo}" for campo in ausentes_aluno],
         )
 

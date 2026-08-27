@@ -14,7 +14,7 @@ import difflib
 import json
 import re
 import unicodedata
-from typing import Iterable, List
+from typing import Dict, Iterable, List
 
 
 def sem_acentos(texto: str) -> str:
@@ -181,6 +181,114 @@ def codigo_tem_input(codigo: str) -> bool:
     return bool(re.search(r"\binput\s*\(", codigo))
 
 
+# ─── Classificação de erros de execução ──────────────────────────────────────
+
+# Classificações de erro usadas pela camada de avaliação para distinguir
+# testes incompatíveis de erros reais do código do aluno.
+ERRO_EOF_INCOMPATIVEL = "eof_incompativel"
+ERRO_EOF_REAL = "eof_logico"
+ERRO_RUNTIME = "erro_runtime"
+ERRO_TIMEOUT = "timeout"
+ERRO_NENHUM = ""
+
+
+def classificar_erro_execucao(stderr: str, returncode) -> str:
+    """
+    Classifica o tipo de erro de execução a partir do traceback.
+
+    Retorna uma das constantes:
+        ERRO_EOF_INCOMPATIVEL  – EOFError e o contexto sugere incompatibilidade
+                                 de interface (chamada adicional de input());
+                                 caller deve confirmar com contagem de inputs.
+        ERRO_EOF_REAL          – EOFError sem evidência de incompatibilidade
+                                 (ex.: input() dentro de try/except, ou
+                                 mesma quantidade de inputs que a entrada).
+        ERRO_RUNTIME           – qualquer outra exceção (ZeroDivisionError,
+                                 ValueError, TypeError, IndexError, etc.)
+        ERRO_TIMEOUT           – (tratado separadamente; não chega aqui)
+        ERRO_NENHUM            – sem erro detectado
+
+    Limitação: EOFError nãoquantitative sozinho prova incompatibilidade.
+    O caller DEVE combinar com contar_inputs_codigo() para decidir.
+    Esta função仅 identifica que o erro É um EOFError (potencialmente
+    incompatível) vs. outro tipo de erro real.
+    """
+    if returncode is None:
+        return ERRO_NENHUM
+
+    _stderr = (stderr or "").strip()
+    _returncode = int(returncode or 0)
+
+    if not _stderr and _returncode == 0:
+        return ERRO_NENHUM
+
+    # Detectar EOFError no traceback
+    if "EOFError" in _stderr:
+        # EOFError sem mais contexto → caller decide com contagem de inputs
+        return ERRO_EOF_INCOMPATIVEL
+
+    # Outros erros de execução
+    if _returncode != 0 or "Traceback" in _stderr or "Error" in _stderr:
+        return ERRO_RUNTIME
+
+    return ERRO_NENHUM
+
+
+def contar_inputs_codigo(codigo: str) -> int:
+    """
+    Conta chamadas estáticas a input() no código Python via AST.
+
+    Retorna o número de nós Call que chamam input(). Conta todas as
+    chamadas, incluindo condicionais e loops — é uma heurística
+    conservadora.
+
+    Limitações conhecidas:
+    - inputs dentro de loops (for/while) são contados uma vez, mas
+      podem ser executados N vezes.
+    - inputs dinâmicos (ex.: getattr(sys, 'in'+'put')()) não são detectados.
+    - Se o código tiver erro de sintaxe, retorna 0 (o caller já
+      verificou sintaxe antes de chamar esta função).
+    """
+    if not codigo:
+        return 0
+
+    try:
+        arvore = ast.parse(codigo)
+    except SyntaxError:
+        return 0
+
+    count = 0
+    for node in ast.walk(arvore):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "input":
+            count += 1
+    return count
+
+
+def blocos_na_entrada(entrada: str) -> int:
+    """
+    Estima a quantidade de blocos de entrada fornecidos ao código.
+
+    Cada bloco corresponde a uma chamada input() que será satisfeita.
+    Usa como heurística a separação por quebras de linha simples.
+
+    Exemplos:
+        ""           → 0
+        "João"       → 1
+        "João\\n14:00"  → 2
+        "a\\nb\\nc"    → 3
+    """
+    if not entrada:
+        return 0
+    linhas = entrada.split("\n")
+    # Filtra linhas vazias no final (trailing newline comum)
+    while linhas and not linhas[-1].strip():
+        linhas.pop()
+    return len(linhas)
+
+
 def _normalizar_prompt(prompt: str) -> str:
     """Gera variantes razoáveis do prompt para remoção segura."""
     prompt = normalizar_texto(prompt)
@@ -202,6 +310,187 @@ def _unique(seq: Iterable[str]) -> List[str]:
     return saida
 
 
+def _eh_chamada_input(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "input"
+    )
+
+
+def _prompt_literal_input(node: ast.Call) -> str:
+    if not node.args:
+        return ""
+
+    arg0 = node.args[0]
+
+    if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+        return _normalizar_prompt(arg0.value)
+
+    # Casos simples de f-string literal, sem expressões interpoladas.
+    if isinstance(arg0, ast.JoinedStr):
+        partes: List[str] = []
+        for parte in arg0.values:
+            if not isinstance(parte, ast.Constant) or not isinstance(parte.value, str):
+                return ""
+            partes.append(parte.value)
+        return _normalizar_prompt("".join(partes))
+
+    return ""
+
+
+def _nomes_alvo_atribuicao(target: ast.AST) -> List[str]:
+    if isinstance(target, ast.Name):
+        return [target.id]
+
+    if isinstance(target, (ast.Tuple, ast.List)):
+        nomes: List[str] = []
+        for elemento in target.elts:
+            nomes.extend(_nomes_alvo_atribuicao(elemento))
+        return nomes
+
+    if isinstance(target, ast.Attribute):
+        try:
+            return [ast.unparse(target)]
+        except Exception:
+            return [target.attr]
+
+    return []
+
+
+def _variavel_associada_input(pilha: List[ast.AST]) -> str:
+    for node in reversed(pilha):
+        if isinstance(node, ast.Assign):
+            nomes: List[str] = []
+            for target in node.targets:
+                nomes.extend(_nomes_alvo_atribuicao(target))
+            return ", ".join(nomes)
+
+        if isinstance(node, ast.AnnAssign):
+            return ", ".join(_nomes_alvo_atribuicao(node.target))
+
+        if isinstance(node, ast.NamedExpr):
+            return ", ".join(_nomes_alvo_atribuicao(node.target))
+
+    return ""
+
+
+def _conversor_input(pilha: List[ast.AST]) -> str:
+    if not pilha:
+        return ""
+
+    pai = pilha[-1]
+    if not isinstance(pai, ast.Call):
+        return ""
+
+    func = pai.func
+    if isinstance(func, ast.Name) and func.id in {"int", "float", "str", "bool"}:
+        return func.id
+
+    return ""
+
+
+class _AssinaturaInputsVisitor(ast.NodeVisitor):
+    def __init__(self) -> None:
+        self.pilha: List[ast.AST] = []
+        self.assinatura: List[Dict[str, str]] = []
+
+    def visit(self, node: ast.AST):  # type: ignore[override]
+        self.pilha.append(node)
+        try:
+            return super().visit(node)
+        finally:
+            self.pilha.pop()
+
+    def visit_Call(self, node: ast.Call) -> None:
+        if _eh_chamada_input(node):
+            ancestrais = self.pilha[:-1]
+            self.assinatura.append({
+                "indice": str(len(self.assinatura) + 1),
+                "variavel": _variavel_associada_input(ancestrais),
+                "prompt": _prompt_literal_input(node),
+                "conversor": _conversor_input(ancestrais),
+            })
+
+        self.generic_visit(node)
+
+
+def _extrair_assinatura_inputs_fallback(codigo: str) -> List[Dict[str, str]]:
+    """
+    Fallback textual para códigos parcialmente inválidos.
+
+    Não tenta interpretar Python completo; apenas preserva a ordem textual
+    de chamadas input(...) e captura padrões simples de atribuição/prompt.
+    """
+    assinatura: List[Dict[str, str]] = []
+    if not codigo:
+        return assinatura
+
+    padrao_input = re.compile(
+        r"\b(?:(int|float|str|bool)\s*\(\s*)?input\s*\(",
+        flags=re.S,
+    )
+    padrao_prompt = re.compile(
+        r"""input\s*\(\s*(['"])((?:\\.|(?!\1).)*)\1""",
+        flags=re.S,
+    )
+    padrao_atribuicao = re.compile(
+        r"([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s*(?::[^=\n]+)?=\s*$"
+    )
+
+    for match in padrao_input.finditer(codigo):
+        prefixo_linha = codigo[codigo.rfind("\n", 0, match.start()) + 1:match.start()]
+        variavel = ""
+        atrib = padrao_atribuicao.search(prefixo_linha)
+        if atrib:
+            variavel = re.sub(r"\s+", "", atrib.group(1)).replace(",", ", ")
+
+        prompt = ""
+        input_pos = codigo.find("input", match.start(), match.end())
+        prompt_match = padrao_prompt.search(codigo, input_pos if input_pos >= 0 else match.start())
+        if prompt_match and prompt_match.start() == (input_pos if input_pos >= 0 else match.start()):
+            try:
+                literal = f"{prompt_match.group(1)}{prompt_match.group(2)}{prompt_match.group(1)}"
+                prompt = _normalizar_prompt(ast.literal_eval(literal))
+            except Exception:
+                prompt = _normalizar_prompt(prompt_match.group(2))
+
+        assinatura.append({
+            "indice": str(len(assinatura) + 1),
+            "variavel": variavel,
+            "prompt": prompt,
+            "conversor": match.group(1) or "",
+        })
+
+    return assinatura
+
+
+def extrair_assinatura_inputs(codigo: str) -> List[Dict[str, str]]:
+    """
+    Extrai a assinatura dos input() em ordem determinística de execução textual.
+
+    Cada item contém:
+    - indice: posição 1-based da chamada input()
+    - variavel: nome associado por atribuição, quando detectável
+    - prompt: prompt literal passado ao input(), quando houver
+    - conversor: int/float/str/bool quando o padrão simples for detectado
+
+    Se o código tiver erro de sintaxe, usa um fallback textual conservador
+    para ainda recuperar a interface de códigos parcialmente incorretos.
+    """
+    if not codigo:
+        return []
+
+    try:
+        arvore = ast.parse(codigo)
+    except SyntaxError:
+        return _extrair_assinatura_inputs_fallback(codigo)
+
+    visitor = _AssinaturaInputsVisitor()
+    visitor.visit(arvore)
+    return visitor.assinatura
+
+
 def extrair_prompts_input(codigo: str) -> List[str]:
     """
     Extrai apenas os prompts literais passados para input("...").
@@ -211,47 +500,7 @@ def extrair_prompts_input(codigo: str) -> List[str]:
     - não tenta adivinhar prompts montados dinamicamente
     - não coleta strings de print(), comentário, etc.
     """
-    if not codigo:
-        return []
-
-    try:
-        arvore = ast.parse(codigo)
-    except SyntaxError:
-        return []
-
-    prompts: List[str] = []
-
-    for node in ast.walk(arvore):
-        if not isinstance(node, ast.Call):
-            continue
-
-        func = node.func
-        if not isinstance(func, ast.Name) or func.id != "input":
-            continue
-
-        if not node.args:
-            continue
-
-        arg0 = node.args[0]
-
-        if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
-            prompts.append(_normalizar_prompt(arg0.value))
-            continue
-
-        # Casos simples de f-string literal.
-        if isinstance(arg0, ast.JoinedStr):
-            partes: List[str] = []
-            ok = True
-            for parte in arg0.values:
-                if isinstance(parte, ast.Constant) and isinstance(parte.value, str):
-                    partes.append(parte.value)
-                else:
-                    ok = False
-                    break
-            if ok:
-                prompts.append(_normalizar_prompt("".join(partes)))
-
-    return _unique([p for p in prompts if p])
+    return _unique([item["prompt"] for item in extrair_assinatura_inputs(codigo) if item.get("prompt")])
 
 
 def remover_prompts_saida(texto: str, prompts_input: Iterable[str]) -> str:

@@ -23,10 +23,11 @@ O módulo recebe questões e respostas de estudantes, identifica o tipo de quest
 | `main.py` | Ponto de entrada. Lê as questões, corrige cada uma e salva o relatório final. |
 | `config.py` | Centraliza caminhos, configurações do LLM, limiares de similaridade e quantidade-alvo de testes. |
 | `models/questao.py` | Define os modelos `Questao` e `Resultado`, usados em todo o fluxo de correção. |
+| `evaluation/evidencia.py` | Fonte única de verdade da rastreabilidade: constantes de fonte (`execucao`, `llm`, `heuristica`, `ausente`) e tipo de evidência, além do contrato `{tipo, resumo, dados[, peso]}` e da normalização da origem. |
 | `parsing/parser.py` | Lê o arquivo de entrada e converte JSON ou texto em blocos para objetos `Questao`. |
 | `evaluation/dispatcher.py` | Roteia cada questão para a estratégia correta conforme o tipo identificado. |
 | `evaluation/correctors.py` | Arquivo com implementações de avaliadores em formato mais concentrado; funciona como referência/versão anterior em relação à arquitetura por estratégias. |
-| `evaluation/strategies/codigo.py` | Avalia código Python por execução e casos de teste. |
+| `evaluation/strategies/codigo.py` | Avalia código Python por execução e casos de teste, registrando evidências estruturadas (incluindo `testes_por_origem`, a procedência da régua de testes). |
 | `evaluation/strategies/previsao.py` | Corrige questões em que o estudante prevê a saída de um programa. |
 | `evaluation/strategies/correcao.py` | Corrige questões de correção de erro, escolhendo entre avaliação textual e execução de código. |
 | `evaluation/strategies/modificacao.py` | Corrige modificações de código usando testes e análise de requisitos via LLM. |
@@ -34,7 +35,7 @@ O módulo recebe questões e respostas de estudantes, identifica o tipo de quest
 | `evaluation/strategies/descritiva.py` | Reaproveita a avaliação textual para questões descritivas. |
 | `evaluation/strategies/justificativa.py` | Reaproveita a avaliação textual para questões de justificativa. |
 | `execution/runner.py` | Executa código Python em subprocesso isolado, com timeout e captura de saída. |
-| `tests/generator.py` | Obtém, valida, deduplica e, quando necessário, gera testes com apoio do LLM. |
+| `tests/generator.py` | Obtém, valida, deduplica e, quando necessário, gera testes com apoio do LLM, marcando a procedência interna de cada teste (`_origem`: `enunciado` ou `llm`). |
 | `llm/client.py` | Realiza chamadas HTTP para um servidor LLM compatível com a API da OpenAI. |
 | `utils/text.py` | Reúne funções de normalização, extração de código/JSON e comparação textual. |
 | `utils/tipo.py` | Normaliza e infere o tipo da questão. |
@@ -70,6 +71,7 @@ O relatório produzido contém:
 - enunciado;
 - detalhes da avaliação;
 - testes executados, quando houver;
+- evidências estruturadas da correção, quando houver (seção "Evidências:", com tipo, resumo e dados de cada evidência, incluindo a procedência dos testes usados como régua);
 - saídas esperadas e obtidas.
 
 ## Tipos de questão suportados

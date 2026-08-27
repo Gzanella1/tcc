@@ -6,7 +6,7 @@ Fase 3.1 — Testes do contrato de CORREÇÃO (parser).
 Garantias:
     8.  O parser reconhece os novos campos de origem.
     9.  O parser continua aceitando o formato legado.
-    10. A origem NUNCA vira codigo_base.
+    10. O código anterior exportado pela geração vira codigo_base.
     11. A resposta futura fica separada da origem.
     12. O arquivo real perguntasGeradas.txt carrega as 5 questões.
 """
@@ -26,7 +26,7 @@ BLOCO_NOVO_FORMATO = """
 Enunciado original:
 Soma de dois números inteiros
 
-Código do aluno que originou esta pergunta:
+Código-base:
 ----------------------------------------
 a = int(input())
 b = int(input())
@@ -61,36 +61,34 @@ class ParserContratoGeracaoTests(unittest.TestCase):
             return carregar_questoes(caminho)
 
     # ------------------------------------------------------------------
-    # 8 e 10 — Novo formato reconhecido; origem não vira codigo_base
+    # 8 e 10 — Novo formato reconhecido; código anterior vira codigo_base
     # ------------------------------------------------------------------
 
-    def test_novo_formato_captura_origem_sem_codigo_base(self):
-        """Provas 8 e 10: extras recebem origem; codigo_base permanece vazio."""
+    def test_novo_formato_captura_codigo_base(self):
+        """Provas 8 e 10: codigo_base recebe o código anterior exportado."""
         q = self._carregar_texto(BLOCO_NOVO_FORMATO)[0]
 
         self.assertEqual(q.tipo, "descritiva")
         self.assertEqual(q.extras.get("enunciado_origem"),
                          "Soma de dois números inteiros")
-        self.assertIn("print(a + b)", q.extras.get("codigo_aluno_origem", ""))
-        self.assertEqual(q.codigo_base, "")
-        self.assertEqual(q.codigo, "")
+        self.assertIn("print(a + b)", q.codigo_base)
+        self.assertFalse(hasattr(q, "codigo"))
 
-    def test_codigo_de_origem_nao_vira_codigo_base_em_json(self):
-        """Prova 10 (JSON): origem declarada impede fallback para codigo_base."""
+    def test_codigo_base_json_e_preservado(self):
+        """Prova 10 (JSON): codigo_base declarado é preservado."""
         conteudo = json.dumps([{
             "id": 1,
             "tipo": "descritiva",
             "enunciado": "a = int(input())\nb = int(input())\nDescreva o fluxo.",
             "enunciado_origem": "Soma",
-            "codigo_aluno_origem": "a = int(input())\nb = int(input())",
+            "codigo_base": "a = int(input())\nb = int(input())",
         }])
 
         q = self._carregar_texto(conteudo)[0]
 
-        self.assertIn("a = int(input())", q.extras.get("codigo_aluno_origem", ""))
+        self.assertIn("a = int(input())", q.codigo_base)
         self.assertEqual(q.extras.get("enunciado_origem"), "Soma")
-        self.assertEqual(q.codigo_base, "")
-        self.assertEqual(q.codigo, "")
+        self.assertFalse(hasattr(q, "codigo"))
 
     # ------------------------------------------------------------------
     # 9 — Formato legado intacto
@@ -103,7 +101,6 @@ class ParserContratoGeracaoTests(unittest.TestCase):
         self.assertEqual(q.tipo, "correcao")
         self.assertIn("valor % 100", q.codigo_base)
         self.assertNotIn("enunciado_origem", q.extras)
-        self.assertNotIn("codigo_aluno_origem", q.extras)
         self.assertEqual(
             q.extras.get("resposta_formato"),
             "texto",
@@ -121,7 +118,7 @@ class ParserContratoGeracaoTests(unittest.TestCase):
         q = self._carregar_texto(bloco)[0]
 
         self.assertIn("lê dois números", q.resposta_aluno)
-        self.assertIn("print(a + b)", q.extras.get("codigo_aluno_origem", ""))
+        self.assertIn("print(a + b)", q.codigo_base)
         self.assertNotIn("print(a + b)", q.resposta_aluno)
 
     # ------------------------------------------------------------------
@@ -186,27 +183,26 @@ print(nome)
         self.assertIn('input("Nome: ")', q.codigo_base)
         # codigo_aluno veio EXCLUSIVAMENTE da resposta do aluno
         self.assertEqual(
-            q.codigo_aluno,
+            q.codigo_aluno_resposta,
             'nome = input("Nome: ")\nprint(nome)\nprint(nome)',
         )
         self.assertIsNone(validar_questao(q))
 
-    def test_questao_quebrada_continua_erro_de_entrada(self):
-        """Falta campo da QUESTÃO (codigo_base) → segue erro_entrada."""
-        from validation import STATUS_ERRO_ENTRADA, validar_questao
+    def test_modificacao_sem_codigo_base_com_resposta_nao_e_erro_de_entrada(self):
+        """MODIFICACAO não exige codigo_base quando há código novo e oráculo."""
+        from validation import validar_questao
 
         q = Questao(
             idx=1,
             tipo="modificacao",
             enunciado="Modifique o programa.",
-            codigo_base="",   # lado da questão ausente
-            codigo_aluno="",  # lado do aluno ausente
+            codigo_base="",
+            codigo_aluno_resposta='print("ok")',
+            saida_esperada="ok\n",
         )
         resultado = validar_questao(q)
 
-        self.assertIsNotNone(resultado)
-        self.assertEqual(resultado.status, STATUS_ERRO_ENTRADA)
-        self.assertTrue(any("codigo_base" in d for d in resultado.detalhes))
+        self.assertIsNone(resultado)
 
 
 if __name__ == "__main__":

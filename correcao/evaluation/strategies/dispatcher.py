@@ -33,16 +33,26 @@ from models.questao import Questao, Resultado
 from tests.generator import obter_testes
 from utils.text import extrair_codigo, normalizar_texto
 from utils.tipo import inferir_tipo, normalizar_tipo
+from validation import resposta_correcao_eh_textual, validar_questao
+
+
+def _resposta_contem_codigo(resposta: str) -> bool:
+    """Detecta apenas código explicitamente delimitado na resposta bruta."""
+    texto = normalizar_texto(resposta or "")
+    return bool(
+        "```" in texto
+        or re.search(r"(?im)^\s*(?:seu\s+)?c[oó]digo\s*:?\s*$", texto)
+    )
 
 
 def _extrair_resposta_codigo(q: Questao) -> str:
-    """Extrai código da resposta do aluno, removendo rótulos e cercas markdown."""
-    if not q.resposta_aluno:
+    """Extrai o código ENTREGUE pelo aluno, sem promover texto corrido."""
+    if not _resposta_contem_codigo(q.resposta_aluno):
         return ""
     texto  = normalizar_texto(q.resposta_aluno)
-    texto  = re.sub(r"(?im)^\s*c[oó]digo\s*:?\s*$", "", texto).strip()
+    texto  = re.sub(r"(?im)^\s*(?:seu\s+)?c[oó]digo\s*:?\s*$", "", texto).strip()
     codigo = extrair_codigo(texto)
-    return codigo.strip() or texto.strip()
+    return codigo.strip() or ""
 
 
 # Mapa estático: tipo canônico → módulo de estratégia
@@ -66,16 +76,25 @@ def corrigir_questao(q: Questao) -> Resultado:
     """
     tipo = normalizar_tipo(q.tipo) or inferir_tipo(q.enunciado)
 
+    erro_entrada = validar_questao(q)
+    if erro_entrada:
+        return erro_entrada
+
+    if tipo == "correcao" and resposta_correcao_eh_textual(q):
+        return texto_llm.avaliar(q)
+
     # Rota por tipo conhecido
     estrategia = _ESTRATEGIAS.get(tipo)
     if estrategia:
         return estrategia.avaliar(q)
 
-    # Fallback: questão com código no enunciado
-    if q.codigo or "```" in (q.enunciado or "") or "input(" in (q.enunciado or ""):
-        codigo_aluno = _extrair_resposta_codigo(q)
+    # Fallback: questão desconhecida com indícios de código no enunciado.
+    if "```" in (q.enunciado or "") or "input(" in (q.enunciado or ""):
+        codigo_aluno_resposta = q.codigo_aluno_resposta or _extrair_resposta_codigo(q)
+        if not codigo_aluno_resposta:
+            return texto_llm.avaliar(q)
         testes       = obter_testes(q)
-        res          = estrategia_codigo.avaliar(q, codigo_aluno, testes)
+        res          = estrategia_codigo.avaliar(q, codigo_aluno_resposta, testes)
         if res.nota > 0:
             return res
 

@@ -91,7 +91,7 @@ class MarcacaoOrigemTests(BaseProcedenciaTests):
             tipo="correcao",
             enunciado="Imprima o dobro.",
             codigo_base="n = int(input())\nprint(n * 2)",
-            entrada="3\n",
+            entradaTestes="3\n",
             saida_esperada="6\n",
         )
         testes = obter_testes_explicitos(q)
@@ -217,7 +217,7 @@ class EvidenciaProcedenciaTests(BaseProcedenciaTests):
             tipo="correcao",
             enunciado="Dobre o número lido.",
             codigo_base="x = input()\nprint(int(x) * 2)",
-            entrada="3\n",
+            entradaTestes="3\n",
             saida_esperada="6\n",
         )
 
@@ -305,7 +305,7 @@ class ModificacaoHerancaProcedenciaTests(BaseProcedenciaTests):
             tipo="modificacao",
             enunciado="Faça o programa repetir o valor digitado.",
             codigo_base="v = input()\nprint(v)",
-            codigo_aluno="v = input()\nprint(v)",
+            codigo_aluno_resposta="v = input()\nprint(v)",
         )
         res = estrategia_modificacao.avaliar(q)
         # Política 70/30 intacta.

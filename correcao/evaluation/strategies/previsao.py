@@ -6,6 +6,14 @@ evaluation/strategies/previsao.py
 
 Avaliador para questões do tipo PREVISÃO.
 
+Contrato canônico:
+    - codigo_base : o programa ANTERIOR do aluno, executado como contexto
+      para descobrir a saída que o aluno deve prever. Aqui ele é a
+      referência da execução — não é gabarito de código novo e esta
+      semântica NÃO se transfere para MODIFICACAO.
+    - resposta_aluno : a previsão bruta do aluno.
+    - entradaTestes  : entrada usada na execução de referencia.
+
 Estratégia (em ordem de prioridade):
     1. Tenta extrair pares (entrada → saída prevista) da resposta do aluno,
        pois o aluno frequentemente escreve no formato:
@@ -17,7 +25,7 @@ Estratégia (em ordem de prioridade):
        marcadores "Entrada:/Saída:" — caso contrário a estratégia 1 deveria
        ter capturado e a estratégia 2 emparelharia blocos na ordem errada.
     3. Se não houver pares extraíveis, cai no modo legado: executa o
-       código com q.entrada (pode ser vazio) e compara diretamente.
+       código com q.entradaTestes (pode ser vazio) e compara diretamente.
 
 Nota: os prompts de input() (ex: "Digite uma palavra: ") são removidos
 da saída antes da comparação, pois o aluno prevê apenas o que os
@@ -285,11 +293,11 @@ def _avaliar_com_pares(
 
 def _avaliar_modo_legado(q: Questao, codigo_base: str) -> Resultado:
     """
-    Fallback: executa o código com q.entrada e compara saída real
+    Fallback: executa o código com q.entradaTestes e compara saída real
     com a resposta bruta do aluno (comportamento original).
     Remove prompts de input() antes de comparar.
     """
-    entrada       = q.entrada or ""
+    entrada       = q.entradaTestes or ""
     execucao      = executar_codigo_python(codigo_base, entrada, timeout=3)
     prompts_input = _extrair_prompts_input(codigo_base)
     saida_correta = _remover_prompts_saida(
@@ -354,7 +362,7 @@ def _avaliar_modo_legado(q: Questao, codigo_base: str) -> Resultado:
 # ─── Ponto de entrada principal ───────────────────────────────────────────────
 
 def avaliar(q: Questao) -> Resultado:
-    codigo_base = q.codigo or extrair_codigo(q.enunciado)
+    codigo_base = q.codigo_base or extrair_codigo(q.enunciado)
 
     if not codigo_base:
         return Resultado(

@@ -101,7 +101,27 @@ feedback
 detalhes
 testes_executados
 saida_correta
+fonte_evidencia
+evidencias
 ```
+
+`fonte_evidencia` indica de onde veio a evidência usada na nota:
+
+```text
+execucao   -> execução real de código ou testes
+llm        -> avaliação feita pelo LLM
+heuristica -> regra local, sem LLM e sem execução
+ausente    -> nenhuma evidência foi usada
+```
+
+`evidencias` é uma lista de registros estruturados que explicam como a nota
+foi obtida. Cada registro tem o formato:
+
+```python
+{"tipo": "...", "resumo": "...", "dados": {...}}   # "peso" opcional
+```
+
+Quando não há evidência, a lista fica vazia e a fonte é `ausente`.
 
 ## Leitura das questões
 
@@ -354,6 +374,26 @@ saida
 obs
 ```
 
+Internamente, cada teste também carrega a chave `_origem`, que registra a
+procedência da régua de testes:
+
+```text
+enunciado -> caso explícito do enunciado ou fornecido na própria questão
+llm       -> caso gerado automaticamente pelo LLM
+```
+
+Essa marcação é interna e acompanha o teste durante a validação e a
+deduplicação (em uma colisão, fica com a origem do teste que sobrevive).
+Na correção, a estratégia de código soma essa procedência e registra na
+evidência de execução o campo:
+
+```text
+testes_por_origem: {"enunciado": X, "llm": Y}
+```
+
+Assim, o relatório permite responder quantos testes vieram do enunciado e
+quantos foram gerados pelo LLM.
+
 Antes de usar os testes, o sistema:
 
 ```text
@@ -445,6 +485,7 @@ feedback
 enunciado
 detalhes
 testes executados
+evidências da correção, quando houver
 saída esperada
 saída obtida
 motivo

@@ -128,7 +128,7 @@ class PrevisaoFonteTests(BasePropagacaoTests):
             tipo="previsao",
             enunciado="Qual será a saída?",
             codigo_base="n = input()\nprint(int(n) * 2)",
-            entrada="3\n",
+            entradaTestes="3\n",
             resposta_aluno="Entrada: 3\nSaída: 6",
         )
         res = estrategia_previsao.avaliar(q)
@@ -141,7 +141,7 @@ class PrevisaoFonteTests(BasePropagacaoTests):
             tipo="previsao",
             enunciado="Qual será a saída?",
             codigo_base="print(7)",
-            entrada="",
+            entradaTestes="",
             resposta_aluno="7",
         )
         res = estrategia_previsao.avaliar(q)
@@ -235,7 +235,7 @@ class ValidationAdministrativoFonteTests(unittest.TestCase):
             tipo="correcao",
             enunciado="Corrija o código abaixo.",
             codigo_base="x = 1",
-            codigo_aluno="x = 2",
+            codigo_aluno_resposta="x = 2",
         )
         res = validar_questao(q)
         self.assertIsNotNone(res)
@@ -257,7 +257,7 @@ class ModificacaoPolitica7030Tests(BasePropagacaoTests):
             tipo="modificacao",
             enunciado="Faça o programa imprimir 2.",
             codigo_base="print(1)",
-            codigo_aluno="print(2)",
+            codigo_aluno_resposta="print(2)",
             testes=[{"entrada": "", "saida": "2\n", "obs": ""}],
         )
         with mock.patch(
@@ -283,7 +283,7 @@ class ModificacaoPolitica7030Tests(BasePropagacaoTests):
             tipo="modificacao",
             enunciado="Adicione um comentário ao programa.",
             codigo_base="x = 1",
-            codigo_aluno="x = 1  # comentário adicionado",
+            codigo_aluno_resposta="x = 1  # comentário adicionado",
         )
         with mock.patch(
             "evaluation.strategies.modificacao.USAR_LLM", True
@@ -297,7 +297,7 @@ class ModificacaoPolitica7030Tests(BasePropagacaoTests):
             tipo="modificacao",
             enunciado="Faça o programa imprimir 2.",
             codigo_base="print(1)",
-            codigo_aluno="print(2)",
+            codigo_aluno_resposta="print(2)",
             testes=[{"entrada": "", "saida": "2\n", "obs": ""}],
         )
         with mock.patch(
@@ -312,7 +312,7 @@ class ModificacaoPolitica7030Tests(BasePropagacaoTests):
             tipo="modificacao",
             enunciado="Modifique o programa para ler dois valores.",
             codigo_base="a = input()\nprint(a)",
-            codigo_aluno="a = input()\nb = input()\nprint(a, b)",
+            codigo_aluno_resposta="a = input()\nb = input()\nprint(a, b)",
         )
         with mock.patch(
             "evaluation.strategies.modificacao.USAR_LLM", False
@@ -332,7 +332,7 @@ class DispatcherIntegracaoFonteTests(BasePropagacaoTests):
             tipo="previsao",
             enunciado="Qual será a saída?",
             codigo_base="n = input()\nprint(n.upper())",
-            entrada="abc\n",
+            entradaTestes="abc\n",
             resposta_aluno="ABC",
         )
         self.assertIsNone(validar_questao(q))

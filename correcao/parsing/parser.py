@@ -6,6 +6,22 @@ parsing/parser.py
 
 Leitura e parsing do arquivo de questões.
 Suporta formato JSON e formato de texto em blocos separados por delimitadores.
+
+Contrato canônico produzido:
+- codigo_base           : código ANTERIOR do aluno (contexto/apoio; nunca
+                          gabarito). Rótulos reconhecidos: "Seu código:",
+                          "Código:", "Código-base:", "Código original:",
+                          além dos aliases JSON correspondentes e dos rótulos
+                          de origem da geração ("Código do aluno que originou
+                          esta pergunta:").
+- codigo_aluno_resposta : o NOVO código entregue pelo aluno como resposta.
+                          Extraído da região de resposta (blocos delimitados
+                          por "---", cercas ``` ou rótulo "Código:").
+                          Nunca alimenta codigo_base.
+- entradaTestes         : entradas declaradas/enumeradas no enunciado.
+- extras                : apenas metadados/rastreabilidade sem campo canônico
+                          (ex.: enunciado_origem). Nenhum dado com campo
+                          canônico é espelhado aqui.
 """
 
 from __future__ import annotations
@@ -43,42 +59,51 @@ ALIASES_CAMPOS: Dict[str, str] = {
     "rubrica":              "rubrica",
     "criterios":            "rubrica",
     "critérios":            "rubrica",
-    "codigo":               "codigo_base",
-    "código":               "codigo_base",
-    "programa":             "codigo_base",
-    "trecho de codigo":     "codigo_base",
-    "trecho de código":     "codigo_base",
-    "codigo base":          "codigo_base",
-    "código base":          "codigo_base",
-    "codigo original":      "codigo_base",
-    "código original":      "codigo_base",
-    "codigo da questao":    "codigo_base",
-    "código da questão":    "codigo_base",
-    "codigo aluno":         "codigo_aluno",
-    "código aluno":         "codigo_aluno",
-    "codigo do aluno":      "codigo_aluno",
-    "código do aluno":      "codigo_aluno",
-    "resposta em codigo":   "codigo_aluno",
-    "resposta em código":   "codigo_aluno",
-    "stdin":                "entrada",
-    "input":                "entrada",
-    "entrada":              "entrada",
-    "saida":                "saida_esperada",
-    "saída":                "saida_esperada",
-    "output":               "saida_esperada",
-    "saida esperada":       "saida_esperada",
-    "saída esperada":       "saida_esperada",
-    "testes":               "testes",
-    "casos de teste":       "testes",
-    "formato da resposta":  "resposta_formato",
-    "resposta formato":     "resposta_formato",
-    "resposta_formato":     "resposta_formato",
-    # ── Fase 3.1: rastreabilidade da origem da pergunta ─────────────────────
-    # Campos de ORIGEM nunca viram codigo_base; são preservados em extras.
-    "codigo aluno origem":       "codigo_aluno_origem",
+    # Código ANTERIOR do aluno (contexto) — todos os sinônimos convergem para
+    # o campo canônico codigo_base, incluindo aliases legados de origem.
+    "codigo":                    "codigo_base",
+    "código":                    "codigo_base",
+    "programa":                  "codigo_base",
+    "trecho de codigo":          "codigo_base",
+    "trecho de código":          "codigo_base",
+    "codigo base":               "codigo_base",
+    "código base":               "codigo_base",
+    "codigo-base":               "codigo_base",
+    "código-base":               "codigo_base",
+    "codigo original":           "codigo_base",
+    "código original":           "codigo_base",
+    "codigo da questao":         "codigo_base",
+    "código da questão":         "codigo_base",
+    "codigo anterior do aluno":  "codigo_base",
+    "código anterior do aluno":  "codigo_base",
+    "codigo aluno origem":       "codigo_base",
+    "NOVO":                      None,  # marcador substituído abaixo
+    "codigo aluno":              "codigo_aluno_resposta",
+    "código aluno":              "codigo_aluno_resposta",
+    "codigo do aluno":           "codigo_aluno_resposta",
+    "código do aluno":           "codigo_aluno_resposta",
+    "resposta em codigo":        "codigo_aluno_resposta",
+    "resposta em código":        "codigo_aluno_resposta",
+    "stdin":                     "entradaTestes",
+    "input":                     "entradaTestes",
+    "entrada":                   "entradaTestes",
+    "saida":                     "saidaTestes",
+    "saída":                     "saidaTestes",
+    "output":                    "saida_esperada",
+    "saida esperada":            "saida_esperada",
+    "saída esperada":            "saida_esperada",
+    "testes":                    "testes",
+    "casos de teste":            "testes",
+    "formato da resposta":       "resposta_formato",
+    "resposta formato":          "resposta_formato",
+    "resposta_formato":          "resposta_formato",
+    # ── Rastreabilidade da origem da pergunta ────────────────────────────────
+    # enunciado_origem não possui campo canônico próprio (é proveniência do
+    # enunciado que gerou a pergunta) e permanece em extras.
     "enunciado origem":          "enunciado_origem",
     "enunciado original":        "enunciado_origem",
 }
+ALIASES_CAMPOS.pop("NOVO", None)
 
 _ALIASES_NORMALIZADOS = {
     normalizar_label(chave): valor for chave, valor in ALIASES_CAMPOS.items()
@@ -87,14 +112,24 @@ _ALIASES_NORMALIZADOS = {
 # Linha separadora de código (ex: ----------------------------------------)
 _LINHA_SEPARADORA = re.compile(r"^-{4,}\s*$")
 
-# ── Fase 3.1: rótulos do novo formato de geração ────────────────────────────
-# Identificam a origem da pergunta. São reconhecidos apenas ANTES do
-# cabeçalho "N - [TIPO]", e nunca convertem o conteúdo em codigo_base.
+# Rótulos que abrem um bloco de CÓDIGO-BASE após o cabeçalho:
+# "Seu código:", "Código:", "Código-base:", "código base:", "Código original:"
+_RE_ROTULO_CODIGO_BASE = re.compile(
+    r"(?i)^(?:seu\s+)?c[oó]digo(?:[\s-]+base|[\s-]+original)?\s*:\s*$"
+)
+
+# Mesmo padrão, usado DENTRO da região de resposta: ali ele identifica o
+# código ENTREGUE pelo aluno, nunca o código-base.
+_RE_ROTULO_CODIGO_RESPOSTA = re.compile(
+    r"(?i)^(?:seu\s+)?c[oó]digo\s*:\s*$"
+)
+
+# ── Rótulos de codigo_base exportados pela geração (antes do cabeçalho) ───────
 _ROTULO_ENUNCIADO_ORIGEM = re.compile(
     r"(?i)^enunciado\s+original\s*:\s*$"
 )
-_ROTULO_CODIGO_ALUNO_ORIGEM = re.compile(
-    r"(?i)^(?:o\s+)?c[oó]digo\s+do\s+aluno\s+que\s+originou\s+esta\s+pergunta\s*:?\s*$"
+_ROTULO_CODIGO_BASE_ORIGEM = re.compile(
+    r"(?i)^(?:o\s+)?(?:c[oó]digo\s+do\s+aluno\s+que\s+originou\s+esta\s+pergunta|c[oó]digo[- ]?base)\s*:?\s*$"
 )
 
 
@@ -167,14 +202,14 @@ def _resposta_tem_codigo_explicito(resposta: str) -> bool:
     texto = resposta or ""
     return bool(
         "```" in texto
-        or re.search(r"(?im)^\s*(?:seu\s+)?c[oó]digo\s*:?\s*$", texto)
+        or _RE_ROTULO_CODIGO_RESPOSTA.match(texto.strip())
     )
 
 
-def _extrair_codigo_resposta(resposta: str, tipo: str, enunciado: str) -> str:
+def _extrair_codigo_resposta(resposta: str) -> str:
     """
-    Extrai codigo entregue pelo aluno sem confundir explicacoes textuais
-    que apenas mencionam pequenos trechos de codigo.
+    Extrai codigo entregue pelo aluno a partir de uma resposta bruta,
+    sem confundir explicacoes textuais que apenas mencionam trechos.
     """
     texto = normalizar_texto(resposta)
     if not texto:
@@ -183,18 +218,15 @@ def _extrair_codigo_resposta(resposta: str, tipo: str, enunciado: str) -> str:
     if "```" in texto:
         return normalizar_texto(extrair_codigo(texto))
 
-    m = re.search(
-        r"(?im)^\s*(?:seu\s+)?c[oó]digo\s*:?\s*$",
-        texto,
-    )
+    m = _RE_ROTULO_CODIGO_RESPOSTA.search(texto)
     if m:
         return normalizar_texto(texto[m.end():])
 
     return ""
 
 
-def _formato_resposta(tipo: str, enunciado: str, resposta: str, codigo_aluno: str) -> str:
-    if codigo_aluno:
+def _formato_resposta(tipo: str, enunciado: str, resposta: str, codigo_aluno_resposta: str) -> str:
+    if codigo_aluno_resposta:
         return "codigo"
     if _enunciado_pede_texto(tipo, enunciado):
         return "texto"
@@ -285,9 +317,17 @@ def parse_block(block: str, idx: int) -> Questao:
     """
     Parseia um bloco de texto no formato gerado pelo sistema:
 
+        [Enunciado original:
+        <enunciado do exercicio de origem>]
+
+        [Código-base:
+        ----------------------------------------
+        <código anterior do aluno>
+        ----------------------------------------]
+
         N - [TIPO] Enunciado da questão
 
-        Seu código:
+        Seu código: | Código-base:
         ----------------------------------------
         <código python>
         ----------------------------------------
@@ -295,28 +335,43 @@ def parse_block(block: str, idx: int) -> Questao:
         resposta N -
         <resposta do aluno>
 
-    Regras de captura:
-    - Cabeçalho da questão: "N - [TIPO] texto"
-    - Início do código: linha que contenha "código:" ou "seu código:" (case-insensitive)
-    - Delimitadores de código: linhas com 4+ hífens (ignoradas, não entram no código)
-    - Início da resposta: "resposta N -" ou "resposta N:"
+    Regras de captura (contrato canônico):
+    - Cabeçalho da questão: "N - [TIPO] texto".
+    - Após o cabeçalho, rótulos "Seu código:", "Código:", "Código-base:",
+      "Código original:" abrem captura de CODIGO-BASE (contexto).
+    - Dentro da região de resposta, rótulos "Código:" ou blocos delimitados
+      por "---" capturam o CODIGO DA RESPOSTA (nunca viram codigo_base).
+    - Delimitadores: linhas com 4+ hífens.
+    - Início da resposta: "resposta N -" ou "resposta N:".
     """
     linhas = block.splitlines()
 
-    tipo                = ""
-    enunciado_linhas    = []
-    resposta            = []
-    codigo              = []
-    capturando_resposta = False
-    capturando_codigo   = False
-    dentro_bloco_codigo = False   # True entre os dois separadores ---
+    tipo             = ""
+    enunciado_linhas = []
+    resposta_linhas       = []   # parte TEXTUAL da resposta
+    resposta_cod_linhas   = []   # código entregue pelo aluno na resposta
+    codigo_linhas         = []   # código-base (contexto)
 
-    # ── Fase 3.1: origem da pergunta (formato novo de geração) ───────────
+    # Estados da máquina de captura
+    capturando_enunciado = False
+    capturando_codigo    = False   # capturando codigo_base
+    capturando_resposta  = False
+    modo_resposta_codigo = False   # dentro da resposta: coletando código?
+    codigo_via_rotulo    = False   # código da resposta aberto por rótulo
+    dentro_bloco_codigo  = False   # True entre dois separadores ---
+
+    # ── Origem da pergunta (antes do cabeçalho) ──────────────────────────────
     enunciado_origem_linhas = []
     codigo_origem_linhas    = []
     capturando_enunciado_origem = False
     capturando_codigo_origem    = False
     dentro_bloco_codigo_origem  = False
+
+    def _fechar_codigo_resposta() -> None:
+        nonlocal modo_resposta_codigo, codigo_via_rotulo, dentro_bloco_codigo
+        modo_resposta_codigo = False
+        codigo_via_rotulo = False
+        dentro_bloco_codigo = False
 
     for linha in linhas:
         linha_strip = linha.strip()
@@ -324,11 +379,12 @@ def parse_block(block: str, idx: int) -> Questao:
         # ── Cabeçalho: "N - [TIPO] enunciado" ────────────────────────────────
         m = re.match(r"\d+\s*-\s*\[(\w+)\]\s*(.+)", linha_strip, re.IGNORECASE)
         if m:
-            tipo      = m.group(1)
-            enunciado_linhas = [m.group(2)]
-            capturando_resposta = False
-            capturando_codigo   = False
-            dentro_bloco_codigo = False
+            tipo              = m.group(1)
+            enunciado_linhas  = [m.group(2)]
+            capturando_enunciado = True
+            capturando_codigo    = False
+            capturando_resposta  = False
+            _fechar_codigo_resposta()
             capturando_enunciado_origem = False
             capturando_codigo_origem    = False
             dentro_bloco_codigo_origem  = False
@@ -347,9 +403,9 @@ def parse_block(block: str, idx: int) -> Questao:
                     capturando_enunciado_origem = False
                 continue
 
-            if _ROTULO_CODIGO_ALUNO_ORIGEM.match(linha_strip):
-                capturando_codigo_origem    = True
-                dentro_bloco_codigo_origem  = False
+            if _ROTULO_CODIGO_BASE_ORIGEM.match(linha_strip):
+                capturando_codigo_origem   = True
+                dentro_bloco_codigo_origem = False
                 continue
 
             if capturando_codigo_origem:
@@ -365,29 +421,27 @@ def parse_block(block: str, idx: int) -> Questao:
                     continue
                 continue
 
-        # ── Continuação do enunciado (linhas antes do "Seu código:" ou resposta) ──
+        # ── Continuação do enunciado (antes do código ou da resposta) ────────
         if tipo and not capturando_codigo and not capturando_resposta:
-            # Detecta início do bloco de código
-            if re.match(r"(?i)^(seu\s+)?c[oó]digo\s*:\s*$", linha_strip):
-                capturando_codigo   = True
-                dentro_bloco_codigo = False
+            if _RE_ROTULO_CODIGO_BASE.match(linha_strip):
+                capturando_enunciado = False
+                capturando_codigo    = True
+                dentro_bloco_codigo  = False
                 continue
-            # Detecta início da resposta
             m2 = re.match(r"resposta\s*\d+\s*[-:]\s*(.*)", linha_strip, re.IGNORECASE)
             if m2:
-                capturando_resposta = True
-                capturando_codigo   = False
+                capturando_enunciado = False
+                capturando_resposta  = True
+                _fechar_codigo_resposta()
                 if m2.group(1).strip():
-                    resposta.append(m2.group(1).strip())
+                    resposta_linhas.append(m2.group(1).strip())
                 continue
-            # Linha de enunciado adicional (ex: "Considere também o caso em que...")
             if linha_strip:
                 enunciado_linhas.append(linha_strip)
             continue
 
-        # ── Captura de código ─────────────────────────────────────────────────
+        # ── Captura de código-base ────────────────────────────────────────────
         if capturando_codigo:
-            # Separador --- abre ou fecha o bloco de código
             if _LINHA_SEPARADORA.match(linha_strip):
                 if not dentro_bloco_codigo:
                     dentro_bloco_codigo = True   # primeiro --- → abre
@@ -396,51 +450,82 @@ def parse_block(block: str, idx: int) -> Questao:
                     capturando_codigo   = False
                 continue
 
-            # Dentro do bloco delimitado por ---
             if dentro_bloco_codigo:
-                codigo.append(linha)
+                codigo_linhas.append(linha)
                 continue
 
-            # Sem delimitadores: captura direto até encontrar resposta
             m2 = re.match(r"resposta\s*\d+\s*[-:]\s*(.*)", linha_strip, re.IGNORECASE)
             if m2:
                 capturando_codigo   = False
                 capturando_resposta = True
+                _fechar_codigo_resposta()
                 if m2.group(1).strip():
-                    resposta.append(m2.group(1).strip())
+                    resposta_linhas.append(m2.group(1).strip())
                 continue
 
-            codigo.append(linha)
+            codigo_linhas.append(linha)
             continue
 
         # ── Captura de resposta ───────────────────────────────────────────────
         if capturando_resposta:
-            if re.match(r"(?i)^(seu\s+)?c[oó]digo\s*:\s*$", linha_strip):
-                capturando_resposta = False
-                capturando_codigo = True
-                continue
             m2 = re.match(r"resposta\s*\d+\s*[-:]\s*(.*)", linha_strip, re.IGNORECASE)
             if m2:
-                # Nova questão dentro do mesmo bloco (não deve acontecer, mas protege)
+                # Nova questão dentro do mesmo bloco (proteção)
                 if m2.group(1).strip():
-                    resposta.append(m2.group(1).strip())
+                    resposta_linhas.append(m2.group(1).strip())
                 continue
-            resposta.append(linha)
+
+            # Rótulo "Código:" dentro da resposta → código ENTREGUE pelo aluno
+            if _RE_ROTULO_CODIGO_RESPOSTA.match(linha_strip):
+                _fechar_codigo_resposta()
+                modo_resposta_codigo = True
+                codigo_via_rotulo    = True
+                dentro_bloco_codigo  = False
+                continue
+
+            # Separador dentro da resposta delimita bloco de código entregue
+            if _LINHA_SEPARADORA.match(linha_strip):
+                if not modo_resposta_codigo:
+                    # Abre bloco implícito de código da resposta
+                    modo_resposta_codigo = True
+                    codigo_via_rotulo    = False
+                    dentro_bloco_codigo  = True
+                elif codigo_via_rotulo and not dentro_bloco_codigo:
+                    # Primeiro --- depois de um rótulo: abre o bloco
+                    dentro_bloco_codigo = True
+                elif codigo_via_rotulo and dentro_bloco_codigo:
+                    _fechar_codigo_resposta()
+                else:
+                    # Fecha bloco implícito aberto por ---
+                    _fechar_codigo_resposta()
+                continue
+
+            if modo_resposta_codigo:
+                resposta_cod_linhas.append(linha)
+            else:
+                resposta_linhas.append(linha)
 
     enunciado_bruto = "\n".join(enunciado_linhas)
     enunciado = normalizar_texto(enunciado_bruto)
     tipo_norm = normalizar_tipo(tipo)
-    resposta_norm = normalizar_texto("\n".join(resposta))
-    codigo_base = normalizar_texto("\n".join(codigo))
-    codigo_aluno = _extrair_codigo_resposta(resposta_norm, tipo_norm, enunciado)
-    resposta_formato = _formato_resposta(tipo_norm, enunciado, resposta_norm, codigo_aluno)
 
-    # ── Fase 3.1: origem preservada em extras, NUNCA em codigo_base ─────────
+    resposta_texto_norm = normalizar_texto("\n".join(resposta_linhas))
+    codigo_da_resposta = normalizar_texto("\n".join(resposta_cod_linhas))
+    if not codigo_da_resposta:
+        # Último recurso legado: cercas ``` ou rótulo dentro do texto bruto.
+        codigo_da_resposta = _extrair_codigo_resposta(resposta_texto_norm)
+
+    codigo_base = normalizar_texto("\n".join(codigo_linhas))
+
+    # Origem pré-cabeçalho: o código anterior do aluno É o codigo_base.
+    if not codigo_base and codigo_origem_linhas:
+        codigo_base = normalizar_texto("\n".join(codigo_origem_linhas))
+
+    resposta_formato = _formato_resposta(tipo_norm, enunciado, resposta_texto_norm, codigo_da_resposta)
+
     extras: Dict[str, Any] = {}
     if enunciado_origem_linhas:
         extras["enunciado_origem"] = normalizar_texto("\n".join(enunciado_origem_linhas))
-    if codigo_origem_linhas:
-        extras["codigo_aluno_origem"] = normalizar_texto("\n".join(codigo_origem_linhas))
     if resposta_formato:
         extras["resposta_formato"] = resposta_formato
 
@@ -448,15 +533,14 @@ def parse_block(block: str, idx: int) -> Questao:
         idx=idx,
         tipo=tipo_norm,
         enunciado=enunciado,
-        resposta_aluno=resposta_norm,
+        resposta_aluno=resposta_texto_norm,
         resposta_referencia="",
         rubrica=_rubrica_padrao(tipo_norm),
         codigo_base=codigo_base,
-        codigo_aluno=codigo_aluno,
+        codigo_aluno_resposta=codigo_da_resposta,
         saida_esperada="",
-        codigo=codigo_base,
-        entrada=extrair_entradas(enunciado_bruto, tipo_norm),
-        saida="",
+        entradaTestes=extrair_entradas(enunciado_bruto, tipo_norm),
+        saidaTestes="",
         testes=[],
         extras=extras,
     )
@@ -506,14 +590,12 @@ def carregar_questoes(path: Path) -> List[Questao]:
                 )
                 resposta_aluno = normalizar_texto(str(_campo(dados, "resposta_aluno")))
                 codigo_base = normalizar_texto(str(_campo(dados, "codigo_base")))
-                codigo_aluno = normalizar_texto(str(_campo(dados, "codigo_aluno")))
+                codigo_aluno_resposta = normalizar_texto(
+                    str(_campo(dados, "codigo_aluno_resposta"))
+                )
 
-                if not codigo_aluno:
-                    codigo_aluno = _extrair_codigo_resposta(
-                        resposta_aluno,
-                        tipo_norm,
-                        enunciado,
-                    )
+                if not codigo_aluno_resposta:
+                    codigo_aluno_resposta = _extrair_codigo_resposta(resposta_aluno)
 
                 resposta_formato = str(
                     _campo(dados, "resposta_formato", default="")
@@ -523,25 +605,19 @@ def carregar_questoes(path: Path) -> List[Questao]:
                         tipo_norm,
                         enunciado,
                         resposta_aluno,
-                        codigo_aluno,
+                        codigo_aluno_resposta,
                     )
 
-                # ── Fase 3.1: origem da pergunta (rastreabilidade) ───────────
-                # Campos canônicos já normalizados pelos aliases; nunca
-                # alimentam codigo_base.
+                # Proveniência do enunciado (sem campo canônico → extras).
                 enunciado_origem = normalizar_texto(
                     str(_campo(dados, "enunciado_origem"))
                 )
-                codigo_aluno_origem = normalizar_texto(
-                    str(_campo(dados, "codigo_aluno_origem"))
-                )
-                tem_origem = bool(enunciado_origem or codigo_aluno_origem)
 
-                extras_origem = {}
+                extras: Dict[str, Any] = dict(dados.get("_extras", {}))
                 if enunciado_origem:
-                    extras_origem["enunciado_origem"] = enunciado_origem
-                if codigo_aluno_origem:
-                    extras_origem["codigo_aluno_origem"] = codigo_aluno_origem
+                    extras["enunciado_origem"] = enunciado_origem
+                if resposta_formato:
+                    extras["resposta_formato"] = resposta_formato
 
                 q = Questao(
                     idx=int(_campo(dados, "id", default=i)),
@@ -551,28 +627,16 @@ def carregar_questoes(path: Path) -> List[Questao]:
                     resposta_referencia=normalizar_texto(str(_campo(dados, "resposta_referencia"))),
                     rubrica=normalizar_texto(str(_campo(dados, "rubrica"))) or _rubrica_padrao(tipo_norm),
                     codigo_base=codigo_base,
-                    codigo_aluno=codigo_aluno,
+                    codigo_aluno_resposta=codigo_aluno_resposta,
                     saida_esperada=normalizar_texto(str(_campo(dados, "saida_esperada"))),
-                    codigo=codigo_base,
-                    entrada=normalizar_texto(str(_campo(dados, "entrada"))) or extrair_entradas(enunciado, tipo_norm),
-                    saida=normalizar_texto(str(_campo(dados, "saida_esperada"))),
+                    entradaTestes=(
+                        normalizar_texto(str(_campo(dados, "entradaTestes")))
+                        or extrair_entradas(enunciado, tipo_norm)
+                    ),
+                    saidaTestes=normalizar_texto(str(_campo(dados, "saidaTestes"))),
                     testes=parse_tests_field(testes_str),
-                    extras={
-                        **dados.get("_extras", {}),
-                        **extras_origem,
-                        **({"resposta_formato": resposta_formato} if resposta_formato else {}),
-                    },
+                    extras=extras,
                 )
-
-                # Fallback legado: extrai código do enunciado/resposta APENAS
-                # quando não há origem declarada — senão o código que originou
-                # a pergunta seria convertido em codigo_base indevidamente.
-                if not tem_origem and not q.codigo_base and not q.codigo:
-                    codigo_extraido = extrair_codigo(q.enunciado or q.resposta_aluno)
-                    if codigo_extraido != (q.enunciado or q.resposta_aluno):
-                        q.codigo_base = normalizar_texto(codigo_extraido)
-                        q.codigo = q.codigo_base
-
                 questoes.append(q)
 
             if questoes:

@@ -43,7 +43,7 @@ def avaliar_previsao(q: Questao) -> Resultado:
     Executa o código-base da questão e compara a saída real
     com a resposta prevista pelo aluno.
     """
-    codigo_base = q.codigo or extrair_codigo(q.enunciado)
+    codigo_base = q.codigo_base or extrair_codigo(q.enunciado)
     if not codigo_base:
         return Resultado(
             idx=q.idx,
@@ -54,7 +54,7 @@ def avaliar_previsao(q: Questao) -> Resultado:
             detalhes=["Faltou o trecho de código necessário para a previsão."],
         )
 
-    entrada  = q.entrada or ""
+    entrada  = q.entradaTestes or ""
     execucao = executar_codigo_python(codigo_base, entrada, timeout=3)
     saida_correta = normalizar_texto(execucao["stdout"])
 
@@ -326,7 +326,7 @@ Retorne APENAS JSON válido neste formato:
 
 def avaliar_codigo_por_testes(
     q: Questao,
-    codigo_aluno: str,
+    codigo_aluno_resposta: str,
     testes: List[Dict[str, str]],
 ) -> Resultado:
     """
@@ -338,7 +338,7 @@ def avaliar_codigo_por_testes(
         4. Com testes, executa cada um e compara a saída.
     """
     # 1. Código vazio
-    if not codigo_aluno.strip():
+    if not codigo_aluno_resposta.strip():
         return Resultado(
             idx=q.idx, tipo=q.tipo, nota=0.0, status="erro",
             feedback="Resposta de código vazia.",
@@ -346,7 +346,7 @@ def avaliar_codigo_por_testes(
         )
 
     # 2. Sintaxe
-    ok_sintaxe, erro_sintaxe = verificar_sintaxe_python(codigo_aluno)
+    ok_sintaxe, erro_sintaxe = verificar_sintaxe_python(codigo_aluno_resposta)
     if not ok_sintaxe:
         return Resultado(
             idx=q.idx, tipo=q.tipo, nota=0.0, status="erro",
@@ -356,7 +356,7 @@ def avaliar_codigo_por_testes(
 
     # 3. Sem testes
     if not testes:
-        execucao    = executar_codigo_python_sem_entrada(codigo_aluno)
+        execucao    = executar_codigo_python_sem_entrada(codigo_aluno_resposta)
         saida_obtida = normalizar_texto(execucao["stdout"])
 
         if execucao["timeout"]:
@@ -387,7 +387,7 @@ def avaliar_codigo_por_testes(
         saida_esperada    = teste.get("saida",   "")
         obs               = teste.get("obs",     "")
 
-        execucao          = executar_codigo_python(codigo_aluno, entrada, timeout=3)
+        execucao          = executar_codigo_python(codigo_aluno_resposta, entrada, timeout=3)
         saida_obtida      = normalizar_texto(execucao["stdout"])
         saida_esperada_norm = normalizar_texto(saida_esperada)
 
@@ -453,7 +453,7 @@ def avaliar_codigo_por_testes(
 
 # ─── Modificação com LLM ─────────────────────────────────────────────────────
 
-def avaliar_modificacao_com_llm(q: Questao, codigo_aluno: str) -> Resultado:
+def avaliar_modificacao_com_llm(q: Questao, codigo_aluno_resposta: str) -> Resultado:
     """
     Avalia questões de modificação combinando:
     - execução contra casos de teste (peso 70%)
@@ -462,7 +462,7 @@ def avaliar_modificacao_com_llm(q: Questao, codigo_aluno: str) -> Resultado:
     Se o enunciado não pedir saída explícita, não penaliza ausência de print/return.
     """
     testes           = obter_testes(q)
-    resultado_testes = avaliar_codigo_por_testes(q, codigo_aluno, testes)
+    resultado_testes = avaliar_codigo_por_testes(q, codigo_aluno_resposta, testes)
 
     if not USAR_LLM:
         return resultado_testes
@@ -482,11 +482,11 @@ def avaliar_modificacao_com_llm(q: Questao, codigo_aluno: str) -> Resultado:
         O enunciado pede saída/retorno explícito?
         { "SIM" if precisa_saida else "NÃO" }
 
-        Código original:
-        {q.codigo or "(não há)"}
+        Código anterior do aluno (apenas contexto/apoio; não é gabarito):
+        {q.codigo_base or "(não há)"}
 
-        Código do aluno:
-        {codigo_aluno or "(vazio)"}
+        Código atual do aluno a ser avaliado:
+        {codigo_aluno_resposta or "(vazio)"}
 
         =========================
         TAREFA
