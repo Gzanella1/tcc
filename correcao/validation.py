@@ -9,6 +9,10 @@ Validacao do contrato de dados de uma Questao antes da correcao.
 Contrato canônico:
 - MODIFICACAO exige apenas {enunciado, codigo_aluno_resposta}. O campo
   codigo_base é OPCIONAL: sua ausência NÃO configura erro_entrada.
+- PREVISAO exige {enunciado, codigo_base, resposta_aluno}. A entrada de
+  execução NÃO é obrigatória: pode vir de entradaTestes ou ser derivada do
+  enunciado pela estratégia ("Entrada: ...", "vetor [...]" ou enumeração
+  narrativa como "digitar os números 5, -3, ...").
 - codigo_base nunca é exigido como régua; nunca é usado para gerar testes
   que avaliem o próprio aluno (apenas para compreender a interface).
 """
@@ -50,11 +54,19 @@ def _tem_testes_objetivos(q: Questao) -> bool:
 
 def _pode_gerar_testes(q: Questao) -> bool:
     """
-    Testes podem ser gerados a partir do CODIGO-BASE (interface do programa).
+    Testes podem ser gerados a partir da interface do programa.
 
-    O código do aluno (codigo_aluno_resposta) NUNCA participa desta decisão:
-    ele não pode gerar a própria régua de avaliação.
+    A interface é obtida do CÓDIGO-BASE (contexto) e, para MODIFICACAO/
+    CORRECAO, do próprio codigo_aluno_resposta (o código atual do aluno é
+    quem define a interface do programa). Isso garante que, mesmo sem
+    codigo_base, a correção de uma modificação ainda possa ser feita.
+
+    O codigo_aluno_resposta NUNCA participa da régua em si (não gera a saída
+    esperada): ele apenas informa se o programa usa input() para a decisão.
     """
+    if q.tipo in ("modificacao", "correcao"):
+        if q.codigo_aluno_resposta and q.codigo_aluno_resposta.strip():
+            return codigo_tem_input(q.codigo_aluno_resposta)
     return codigo_tem_input(q.codigo_base)
 
 
@@ -132,8 +144,8 @@ def validar_questao(q: Questao) -> Optional[Resultado]:
     if tipo == "previsao":
         if not normalizar_texto(q.codigo_base):
             _registrar("codigo_base")
-        if not normalizar_texto(q.entradaTestes):
-            _registrar("entradaTestes")
+        # entradaTestes é OPCIONAL: a entrada pode ser derivada do enunciado
+        # pela estratégia (utils.text.extrair_entradas_de_enunciado).
         if not normalizar_texto(q.resposta_aluno):
             _registrar("resposta_aluno")
 

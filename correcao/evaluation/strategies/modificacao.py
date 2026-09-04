@@ -91,7 +91,7 @@ Código atual do aluno a ser avaliado:
 TAREFA
 =========================
 
-1. Extraia os REQUISITOS explícitos do enunciado.
+1. Extraia os REQUISITOS explícitos do enunciado, sem criar requisitos.
 2. Para cada requisito:
    - verifique se foi atendido no CÓDIGO ATUAL do aluno;
    - justifique com base no código, sem inventar comportamento.

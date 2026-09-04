@@ -16,8 +16,6 @@ class Pergunta:
         pergunta         – texto da pergunta gerada
         exercicio_numero – número da questão de origem
         enunciado_origem – enunciado original usado para gerar a pergunta
-        codigo_aluno_origem – código produzido pelo aluno que originou a pergunta
-
         Campos opcionais reservados para etapas posteriores (Fases 3.2+).
         Permanecem None/vazios enquanto não houver mecanismo real de
         preenchimento — o sistema NÃO inventa evidência:
@@ -27,7 +25,6 @@ class Pergunta:
     pergunta: str
     exercicio_numero: int = 0
     enunciado_origem: str = ""
-    codigo_aluno_origem: str = ""
     conceito_avaliado: str | None = None
     evidencia_codigo: str | None = None
     resposta_esperada: str | None = None

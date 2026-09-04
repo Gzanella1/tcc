@@ -1,12 +1,11 @@
 # =============================================================
 # models/exercicio.py
-# Contrato de GERAÇÃO (Fase 3.1): aqui NÃO existe codigo_base.
+# Contrato de GERAÇÃO:
 # Um Exercicio carrega o enunciado original da questão e o código
-# produzido anteriormente pelo aluno — que é a ORIGEM de qualquer
-# pergunta gerada. Nunca confundir com os contratos de correção.
+# produzido anteriormente pelo aluno. Esse código cruza a fronteira para
+# a correção como codigo_base.
 #
 # Aliases de compatibilidade:
-#   .codigo  ↔  .codigo_aluno_anterior   (sempre em sincronia)
 #   .titulo  ↔  .enunciado_original      (sempre em sincronia)
 # =============================================================
 
@@ -17,8 +16,6 @@ _PLACEHOLDER_CODIGO = "[O ALUNO NÃO ESCREVEU CÓDIGO]"
 
 # pares de alias: campo → campo espelho
 _ALIASES = {
-    "codigo":              "codigo_aluno_anterior",
-    "codigo_aluno_anterior": "codigo",
     "titulo":              "enunciado_original",
     "enunciado_original":  "titulo",
 }
@@ -32,25 +29,22 @@ class Exercicio:
     Atributos:
         numero               – número da questão original
         enunciado_original   – texto original da questão (alias: .titulo)
-        codigo_aluno_anterior – código que o aluno escreveu na resposta
-                                anterior (alias: .codigo)
+        codigo_base          – código anterior produzido pelo aluno; contexto
+                               que será exportado para a correção.
 
-    Os aliases permanecem sincronizados em qualquer atribuição,
-    garantindo compatibilidade com o código legado.
+    O alias titulo/enunciado_original permanece sincronizado em qualquer
+    atribuição.
     """
 
     numero: int
-    titulo: str = ""
-    codigo: str = _PLACEHOLDER_CODIGO
     enunciado_original: str = ""
-    codigo_aluno_anterior: str = ""
+    codigo_base: str = _PLACEHOLDER_CODIGO
+    titulo: str = ""
 
     def __post_init__(self):
         # Normalização inicial (antes do alias dinâmico ligar)
-        if not self.codigo:
-            object.__setattr__(self, "codigo", _PLACEHOLDER_CODIGO)
-        if not self.codigo_aluno_anterior:
-            object.__setattr__(self, "codigo_aluno_anterior", self.codigo)
+        if not self.codigo_base:
+            object.__setattr__(self, "codigo_base", _PLACEHOLDER_CODIGO)
         if not self.enunciado_original:
             object.__setattr__(self, "enunciado_original", self.titulo)
         if not self.titulo:
@@ -66,8 +60,4 @@ class Exercicio:
 
         espelho = _ALIASES.get(name)
         if espelho is not None:
-            novo_valor = value or (
-                _PLACEHOLDER_CODIGO if espelho in ("codigo", "codigo_aluno_anterior")
-                else ""
-            )
-            object.__setattr__(self, espelho, novo_valor)
+            object.__setattr__(self, espelho, value or "")

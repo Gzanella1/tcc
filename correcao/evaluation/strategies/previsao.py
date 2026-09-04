@@ -12,7 +12,11 @@ Contrato canônico:
       referência da execução — não é gabarito de código novo e esta
       semântica NÃO se transfere para MODIFICACAO.
     - resposta_aluno : a previsão bruta do aluno.
-    - entradaTestes  : entrada usada na execução de referencia.
+    - entradaTestes  : entrada usada na execução de referencia. É OPCIONAL:
+      quando vazia, a entrada é derivada do próprio enunciado
+      (utils.text.extrair_entradas_de_enunciado), por exemplo de enunciados
+      narrativos como "Se o usuário digitar os números 5, -3, 0, ... e
+      depois 0 para encerrar".
 
 Estratégia (em ordem de prioridade):
     1. Tenta extrair pares (entrada → saída prevista) da resposta do aluno,
@@ -25,7 +29,8 @@ Estratégia (em ordem de prioridade):
        marcadores "Entrada:/Saída:" — caso contrário a estratégia 1 deveria
        ter capturado e a estratégia 2 emparelharia blocos na ordem errada.
     3. Se não houver pares extraíveis, cai no modo legado: executa o
-       código com q.entradaTestes (pode ser vazio) e compara diretamente.
+       código com q.entradaTestes OU, quando este estiver vazio, com a
+       entrada derivada do enunciado, e compara diretamente.
 
 Nota: os prompts de input() (ex: "Digite uma palavra: ") são removidos
 da saída antes da comparação, pois o aluno prevê apenas o que os
@@ -41,7 +46,12 @@ from config import LIMIAR_APROX, LIMIAR_EXATO
 from evaluation.evidencia import FONTE_AUSENTE, FONTE_EXECUCAO, TIPO_EXECUCAO
 from execution.runner import executar_codigo_python
 from models.questao import Questao, Resultado
-from utils.text import comparar_textos, extrair_codigo, normalizar_texto
+from utils.text import (
+    comparar_textos,
+    extrair_codigo,
+    extrair_entradas_de_enunciado,
+    normalizar_texto,
+)
 
 
 # ─── Extração de pares entrada/saída da resposta do aluno ────────────────────
@@ -293,11 +303,18 @@ def _avaliar_com_pares(
 
 def _avaliar_modo_legado(q: Questao, codigo_base: str) -> Resultado:
     """
-    Fallback: executa o código com q.entradaTestes e compara saída real
-    com a resposta bruta do aluno (comportamento original).
-    Remove prompts de input() antes de comparar.
+    Fallback: executa o código e compara saída real com a resposta bruta do
+    aluno (comportamento original). Remove prompts de input() antes de
+    comparar.
+
+    A entrada usada é q.entradaTestes; quando ela está vazia, é derivada do
+    próprio enunciado (ex.: "Se o usuário digitar os números 5, -3, 0, ...
+    para encerrar"), de modo que um previsão sem entradaTestes declarado
+    ainda consegue ser executada com os dados descritos no texto.
     """
-    entrada       = q.entradaTestes or ""
+    entrada = normalizar_texto(q.entradaTestes) or extrair_entradas_de_enunciado(
+        q.enunciado or "", q.tipo
+    )
     execucao      = executar_codigo_python(codigo_base, entrada, timeout=3)
     prompts_input = _extrair_prompts_input(codigo_base)
     saida_correta = _remover_prompts_saida(
@@ -397,3 +414,4 @@ def avaliar(q: Questao) -> Resultado:
 
     # 3. Fallback legado
     return _avaliar_modo_legado(q, codigo_base)
+

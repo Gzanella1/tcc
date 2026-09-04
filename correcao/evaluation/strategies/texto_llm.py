@@ -30,7 +30,9 @@ from evaluation.evidencia import (
 from llm.client import chamar_llm_json
 from models.questao import Questao, Resultado
 from utils.text import normalizar_texto, sem_acentos
-
+from dataclasses import replace
+from execution.runner import executar_codigo_python_sem_entrada
+from utils.text import sem_acentos, codigo_tem_input
 
 def _detectar_conceito_ok(enun_low: str, resp_low: str) -> bool:
     """
@@ -64,6 +66,7 @@ def avaliar(q: Questao) -> Resultado:
     resp_low    = sem_acentos(resposta.lower())
     enun_low    = sem_acentos(enunciado.lower())
     conceito_ok = _detectar_conceito_ok(enun_low, resp_low)
+    saida_real = (q.extras or {}).get("saida_real_codigo_base", "")
 
     if conceito_ok:
         nota_minima   = 7.0
@@ -75,36 +78,56 @@ def avaliar(q: Questao) -> Resultado:
         feedback_base = "A resposta não demonstra com clareza o conceito pedido."
 
     prompt = f"""
-Você é um corretor de respostas textuais de programação.
+        Você é um corretor de respostas textuais de programação.
 
-Enunciado:
-{q.enunciado}
+        Enunciado:
+        {q.enunciado}
 
-Resposta do aluno:
-{q.resposta_aluno or "(vazia)"}
+        Código-base:
+        {q.codigo_base or "(não fornecido)"}
 
-Regras de correção:
-- Priorize o CONCEITO, não a gramática.
-- Se a ideia principal estiver correta, a nota deve ser alta.
-- Erros de português ou frase confusa não devem derrubar muito a nota.
-- Se a resposta estiver parcialmente correta, dê nota intermediária.
-- Se estiver errada conceitualmente, dê nota baixa.
-- Não seja rígido demais com a forma.
+        Evidência objetiva de execução do código-base:
+        {saida_real or "(não disponível)"}
 
-Avalie estes itens:
-1. entendimento do conceito
-2. completude
-3. clareza
+        Resposta do aluno:
+        {q.resposta_aluno or "(vazia)"}
 
-Retorne APENAS JSON válido neste formato:
-{{
-  "nota": 0,
-  "status": "ok|parcial|erro",
-  "feedback": "texto curto",
-  "acertos": ["..."],
-  "melhorias": ["..."]
-}}
-"""
+        Regras de correção:
+        - Avalie a resposta com base na correção técnica.
+        - Priorize o conceito, não a gramática.
+        - Não assuma que as afirmações presentes no enunciado são necessariamente verdadeiras.
+        - Analise tecnicamente o código-base antes de avaliar a resposta.
+        - Se o enunciado afirmar que existe um erro, verifique se esse erro realmente existe.
+        - Se o aluno contestar a premissa do enunciado, verifique se a contestação é tecnicamente correta.
+        - Se o aluno demonstrar corretamente que o suposto erro não existe, considere isso um acerto.
+        - Não penalize o aluno simplesmente por discordar do enunciado.
+        - A evidência de execução é um dado observado diretamente do código-base.
+        - Use a evidência de execução como apoio à análise.
+        - Não conclua que um algoritmo está correto ou incorreto apenas com base em uma única execução.
+        - Se houver conflito entre a premissa do enunciado e a análise técnica do código, priorize a análise técnica.
+
+        Antes de determinar a nota:
+        1. Identifique o conceito técnico avaliado.
+        2. Verifique se o suposto erro realmente existe no código-base.
+        3. Determine se o código implementa corretamente o conceito.
+        4. Avalie a resposta do aluno.
+        5. Caso o aluno conteste o enunciado, verifique se a contestação é tecnicamente válida.
+        6. Só então determine a nota.
+
+        Avalie:
+        1. entendimento do conceito
+        2. completude
+        3. clareza
+
+        Retorne APENAS JSON válido neste formato:
+        {{
+        "nota": 0,
+        "status": "ok|parcial|erro",
+        "feedback": "texto curto",
+        "acertos": ["..."],
+        "melhorias": ["..."]
+        }}
+        """
 
     obj = chamar_llm_json(
         [

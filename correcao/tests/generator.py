@@ -31,9 +31,13 @@ from typing import Any, Dict, List, Optional
 from config import TESTES_ALVO, USAR_LLM
 from llm.client import chamar_llm_json
 from models.questao import Questao
+from execution.runner import executar_codigo_python
 from utils.text import (
+    ERRO_EOF_INCOMPATIVEL,
     blocos_na_entrada,
+    classificar_erro_execucao,
     codigo_tem_input,
+    codigo_tem_input_em_loop,
     extrair_assinatura_inputs,
     extrair_prompts_input,
     normalizar_label,
@@ -330,6 +334,43 @@ def _montar_entrada_gerada(
 
     return limpar_entrada_interativa(str(entrada_bruta), interface)
 
+
+
+def _entrada_atende_interface(interface: str, entrada: str) -> bool:
+    """
+    Executa a interface com a entrada gerada e verifica se ela é
+    MECANICAMENTE compatível (não gera EOFError por faltar linhas de
+    stdin). Não valida se a saída está correta — apenas se a entrada
+    tem linhas suficientes para satisfazer as chamadas input() que a
+    interface DINÂMICA (com loop) realmente executa neste cenário.
+
+    Usado exclusivamente para interfaces dinâmicas, onde a contagem
+    estática de input() não é confiável: o número de iterações do
+    laço depende dos valores que o próprio LLM escolheu gerar.
+
+    Importante: isto NÃO valida se o comportamento do código está
+    correto (isso continua vindo do enunciado, nunca do código do
+    aluno). Só confirma que o stdin gerado é executável até o fim
+    sem EOFError, para não aceitar testes mecanicamente quebrados.
+    """
+    if not interface or not interface.strip():
+        return False
+
+    execucao = executar_codigo_python(interface, entrada, timeout=3)
+
+    if execucao.get("timeout"):
+        return False
+
+    stderr = execucao.get("stderr", "") or ""
+    returncode = execucao.get("returncode")
+
+    classificacao = classificar_erro_execucao(stderr, returncode)
+    if classificacao == ERRO_EOF_INCOMPATIVEL:
+        return False
+
+    return True
+
+
 # ─── Deduplicação ────────────────────────────────────────────────────────────
 
 def deduplicar_testes(testes: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -415,25 +456,45 @@ def _gerar_testes_llm_once(q: Questao, quantidade: int) -> List[Dict[str, str]]:
     assinatura_inputs = extrair_assinatura_inputs(interface)
     assinatura_descrita = _descrever_assinatura_inputs(assinatura_inputs)
 
-    if usa_input:
+    # Interface DINÂMICA: input() dentro de um laço → quantidade de
+    # chamadas varia em runtime, não pode ser validada por assinatura fixa.
+    interface_dinamica = usa_input and codigo_tem_input_em_loop(interface)
+
+    if interface_dinamica:
+        regra_input = (
+            "- O código lê entradas dentro de um LAÇO (quantidade variável de "
+            "chamadas input() em tempo de execução, não uma assinatura fixa)."
+        )
+        regra_entrada = """
+            - Preencha "entrada" diretamente com o STDIN COMPLETO, uma linha por input(),
+            simulando quantas iterações do laço forem necessárias para um cenário
+            realista (ex.: 2 ou 3 repetições) seguidas do valor que encerra o laço
+            (ex.: linha vazia, se for a condição de saída usada no código).
+            - NÃO use "valores_entrada" neste caso: a ordem/quantidade de inputs é
+            decidida pelo próprio laço, não por uma assinatura fixa.
+            - Cada linha de "entrada" deve corresponder, em ordem, a um input() que
+            seria de fato executado dado o cenário que você criar.
+            """
+    elif usa_input:
         regra_input = "- O código usa input(), então gere valores realistas para cada input()."
         regra_entrada = f"""
-- NÃO defina a ordem final do stdin na chave "entrada"; ela será montada pelo Python.
-- Preencha "valores_entrada" com os valores do cenário, identificados por indice/variavel/prompt.
-- A ordem dos objetos dentro de "valores_entrada" não importa.
-- O Python montará "entrada" seguindo exatamente esta assinatura real dos input():
-{assinatura_descrita}
-- NÃO inclua textos dos prompts, menus ou mensagens do programa como valores.
-- Exemplo de valores_entrada:
-  [
-    {{"indice": 1, "variavel": "opcao", "valor": "1"}},
-    {{"indice": 2, "variavel": "a", "valor": "5"}},
-    {{"indice": 3, "variavel": "b", "valor": "3"}}
-  ]
-"""
+            - NÃO defina a ordem final do stdin na chave "entrada"; ela será montada pelo Python.
+            - Preencha "valores_entrada" com os valores do cenário, identificados por indice/variavel/prompt.
+            - A ordem dos objetos dentro de "valores_entrada" não importa.
+            - O Python montará "entrada" seguindo exatamente esta assinatura real dos input():
+            {assinatura_descrita}
+            - NÃO inclua textos dos prompts, menus ou mensagens do programa como valores.
+            - Exemplo de valores_entrada:
+            [
+                {{"indice": 1, "variavel": "opcao", "valor": "1"}},
+                {{"indice": 2, "variavel": "a", "valor": "5"}},
+                {{"indice": 3, "variavel": "b", "valor": "3"}}
+            ]
+            """
     else:
         regra_input = "- O código NÃO usa input(), então NÃO gere entradas."
         regra_entrada = '- entrada deve ser "" (string vazia)'
+
 
     prompt = f"""
 Você é um gerador de testes para código Python.
@@ -493,23 +554,43 @@ REGRAS:
 
     testes: List[Dict[str, str]] = []
 
+
     if isinstance(obj, dict):
         bruto = obj.get("testes", [])
         if isinstance(bruto, list):
             for item in bruto:
                 if isinstance(item, dict):
-                    entrada = _montar_entrada_gerada(item, assinatura_inputs, interface)
+                    if interface_dinamica:
+                        entrada_bruta = item.get("entrada", "")
+                        entrada = (
+                            _normalizar_entrada_dinamica(entrada_bruta)
+                            if not isinstance(entrada_bruta, (dict, list))
+                            else ""
+                        )
+                    else:
+                        entrada = _montar_entrada_gerada(item, assinatura_inputs, interface)
+
                     saida = item.get("saida", "")
 
                     if not usa_input:
                         entrada = ""
 
+                    # A checagem de contagem exata só vale para interface FIXA.
                     if (
                         usa_input
+                        and not interface_dinamica
                         and assinatura_inputs
                         and blocos_na_entrada(entrada) != len(assinatura_inputs)
                     ):
                         continue
+
+                    # Para interface dinâmica, a contagem estática não serve
+                    # (o loop pode iterar N vezes). Valida executando: só
+                    # aceita a entrada se o código roda até o fim sem
+                    # EOFError (sem opinar sobre correção do resultado).
+                    if usa_input and interface_dinamica:
+                        if not _entrada_atende_interface(interface, entrada):
+                            continue
 
                     testes.append({
                         "entrada": str(entrada),
@@ -518,7 +599,11 @@ REGRAS:
                         "_origem": ORIGEM_LLM,
                     })
 
+                     
     return validar_testes(testes, requer_input=usa_input)
+
+
+
 
 
 def gerar_testes_com_llm(q: Questao, quantidade: int = TESTES_ALVO) -> List[Dict[str, str]]:
@@ -584,19 +669,11 @@ def obter_testes_explicitos(q: Questao) -> List[Dict[str, str]]:
 
 
 def obter_testes(q: Questao) -> List[Dict[str, str]]:
-    """
-    Retorna a lista final de testes para uma questão, combinando:
-    - testes explícitos do enunciado
-    - testes gerados via LLM
-
-    Também corrige entradas interativas geradas incorretamente pelo LLM.
-    """
     testes = obter_testes_explicitos(q)
 
-    # Interface: codigo_aluno_resposta (MODIFICACAO/CORRECAO) ou codigo_base.
-    # A interface determina se o código usa input() e quais prompts exibe.
     interface = _codigo_para_interface(q)
     usa_input = codigo_tem_input(interface)
+    interface_dinamica = usa_input and codigo_tem_input_em_loop(interface)
 
     if usa_input:
         gerados = gerar_testes_com_llm(q, quantidade=TESTES_ALVO)
@@ -606,21 +683,18 @@ def obter_testes(q: Questao) -> List[Dict[str, str]]:
     if gerados:
         testes.extend(gerados)
 
-    # Corrige entradas do tipo:
-    # "Digite o primeiro número: 5"
-    # para:
-    # "5"
     if usa_input:
         testes_corrigidos = []
-
         for teste in testes:
             teste_corrigido = dict(teste)
-            teste_corrigido["entrada"] = limpar_entrada_interativa(
-                teste_corrigido.get("entrada", ""),
-                interface,
-            )
+            entrada_atual = teste_corrigido.get("entrada", "")
+            if interface_dinamica:
+                teste_corrigido["entrada"] = _normalizar_entrada_dinamica(entrada_atual)
+            else:
+                teste_corrigido["entrada"] = limpar_entrada_interativa(
+                    entrada_atual, interface,
+                )
             testes_corrigidos.append(teste_corrigido)
-
         testes = testes_corrigidos
 
     testes = validar_testes(testes, requer_input=usa_input)
@@ -706,3 +780,31 @@ def limpar_entrada_interativa(entrada: str, codigo: str) -> str:
         return ""
 
     return "\n".join(valores) + "\n"
+
+
+def _normalizar_entrada_dinamica(entrada_bruta: Any) -> str:
+    """
+    Normaliza a entrada bruta gerada pelo LLM para interfaces DINÂMICAS
+    (input() dentro de loop), preservando linhas em branco.
+
+    Diferente de limpar_entrada_interativa(), que descarta toda linha
+    vazia por assumir uma assinatura fixa onde cada linha é um valor
+    obrigatório, aqui uma linha vazia pode ser o próprio valor que
+    encerra o laço (ex.: quando o código compara `chave == ""`).
+    Remove apenas UMA quebra de linha final trivial (artefato comum de
+    strings terminadas em "\\n"), nunca linhas em branco intencionais
+    no meio ou como último valor real.
+    """
+    if entrada_bruta is None:
+        return ""
+
+    texto = str(entrada_bruta).replace("\r\n", "\n").replace("\r", "\n")
+    linhas = [ln.rstrip() for ln in texto.split("\n")]
+
+    if len(linhas) > 1 and linhas[-1] == "":
+        linhas.pop()
+
+    if not linhas:
+        return ""
+
+    return "\n".join(linhas) + "\n"

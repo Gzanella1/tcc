@@ -6,11 +6,11 @@ Fase 3.1 — Testes do contrato de GERAÇÃO.
 Garantias:
     1. O loader captura o enunciado original ("N - Título").
     2. O loader separa o código anterior do aluno dos enunciados.
-    3. O alias Exercicio.codigo continua funcionando.
+    3. O Exercicio usa codigo_base, sem aliases de código.
     4. O builder recebe explicitamente enunciado original + código.
     5. A Pergunta preserva enunciado_origem.
-    6. A Pergunta preserva codigo_aluno_origem.
-    7. O exportador NUNCA rotula a origem como "Seu código:".
+    6. O exportador emite Código-base para a correção.
+    7. O exportador NUNCA rotula o contexto como "Seu código:".
     12. O arquivo real conhecimento.txt carrega as 5 questões.
 """
 
@@ -73,13 +73,13 @@ class ContratoGeracaoTests(unittest.TestCase):
                          "Média de três notas")
 
     def test_loader_separa_codigo_anterior_do_enunciado(self):
-        """Prova 2: blocos 'resposta N' viram codigo_aluno_anterior."""
+        """Prova 2: blocos 'resposta N' viram codigo_base."""
         with tempfile_dir() as caminho:
             caminho.write_text(FIXTURE_CONHECIMENTO, encoding="utf-8")
             exercicios = KnowledgeLoader(str(caminho)).carregar()
 
-        self.assertIn("print(a + b)", exercicios[0].codigo_aluno_anterior)
-        self.assertIn("(n1 + n2 + n3)", exercicios[1].codigo_aluno_anterior)
+        self.assertIn("print(a + b)", exercicios[0].codigo_base)
+        self.assertIn("(n1 + n2 + n3)", exercicios[1].codigo_base)
         # linha "1 - ..." dentro de bloco resposta NUNCA vira título
         self.assertNotIn("linha dentro de código",
                          exercicios[0].enunciado_original)
@@ -87,16 +87,15 @@ class ContratoGeracaoTests(unittest.TestCase):
                          exercicios[1].enunciado_original)
 
     # ------------------------------------------------------------------
-    # 3 — Alias de compatibilidade
+    # 3 — Contrato sem aliases de código
     # ------------------------------------------------------------------
 
-    def test_alias_exercicio_codigo_reflete_codigo_anterior(self):
-        """Prova 3: .codigo é alias de .codigo_aluno_anterior."""
-        ex = Exercicio(numero=1, titulo="T", codigo="print(1)")
-        self.assertEqual(ex.codigo_aluno_anterior, "print(1)")
+    def test_exercicio_usa_codigo_base_sem_aliases_de_codigo(self):
+        ex = Exercicio(numero=1, titulo="T", codigo_base="print(1)")
 
-        ex.codigo_aluno_anterior = "print(2)"
-        self.assertEqual(ex.codigo, "print(2)")
+        self.assertEqual(ex.codigo_base, "print(1)")
+        self.assertFalse(hasattr(ex, "codigo"))
+        self.assertFalse(hasattr(ex, "codigo_aluno_anterior"))
 
     def test_alias_titulo_enunciado_original_bidirecional(self):
         ex = Exercicio(numero=1, titulo="Soma")
@@ -113,25 +112,29 @@ class ContratoGeracaoTests(unittest.TestCase):
         ex = Exercicio(
             numero=7,
             titulo="Soma",
-            codigo="a = 1\nb = 2\nprint(a + b)",
+            codigo_base="a = 1\nb = 2\nprint(a + b)",
         )
         prompt = QuestionBuilder().construir(ex, "justificativa")
 
         self.assertIn("Enunciado original:\nSoma", prompt)
-        self.assertIn("Código produzido pelo aluno:\na = 1\nb = 2\nprint(a + b)", prompt)
+        self.assertIn(
+            "Código anterior do aluno (contexto/apoio; não é gabarito):\n"
+            "a = 1\nb = 2\nprint(a + b)",
+            prompt,
+        )
         # rótulo antigo ambíguo não deve mais aparecer
         self.assertNotIn("Código do aluno:\n", prompt)
 
     # ------------------------------------------------------------------
-    # 5 e 6 — Transporte da origem na Pergunta
+    # 5 — Transporte da origem textual na Pergunta
     # ------------------------------------------------------------------
 
-    def test_pergunta_preserva_origem_completa(self):
-        """Provas 5 e 6: Pergunta carrega enunciado_origem e codigo_aluno_origem."""
+    def test_pergunta_preserva_origem_textual_sem_duplicar_codigo_base(self):
+        """Prova 5: Pergunta carrega enunciado_origem e não duplica codigo_base."""
         ex = Exercicio(
             numero=3,
             titulo="Maior de três",
-            codigo="maior = None\nfor x in [1, 2]:\n    if maior is None or x > maior:\n        maior = x",
+            codigo_base="maior = None\nfor x in [1, 2]:\n    if maior is None or x > maior:\n        maior = x",
         )
         falsa = Pergunta(tipo="descritiva", pergunta="O que o código faz?",
                          exercicio_numero=3)
@@ -143,8 +146,7 @@ class ContratoGeracaoTests(unittest.TestCase):
         self.assertEqual(len(resultado), 1)
         p = resultado[0]
         self.assertEqual(p.enunciado_origem, "Maior de três")
-        self.assertEqual(p.codigo_aluno_origem, ex.codigo_aluno_anterior)
-        self.assertIn("maior = None", p.codigo_aluno_origem)
+        self.assertFalse(hasattr(p, "codigo_aluno_origem"))
         # sem evidência inventada nesta fase
         self.assertIsNone(p.conceito_avaliado)
         self.assertIsNone(p.evidencia_codigo)
@@ -154,18 +156,17 @@ class ContratoGeracaoTests(unittest.TestCase):
     # ------------------------------------------------------------------
 
     def test_exporter_usa_rotulo_de_origem_e_mantem_resposta_futura(self):
-        """Prova 7: novo rótulo presente; 'Seu código:' ausente."""
-        ex = Exercicio(numero=1, titulo="Soma", codigo="print(a + b)")
+        """Prova 7: Código-base presente; 'Seu código:' ausente."""
+        ex = Exercicio(numero=1, titulo="Soma", codigo_base="print(a + b)")
         p = Pergunta(tipo="previsao", pergunta="Qual a saída para 2 e 3?",
                      exercicio_numero=1,
-                     enunciado_origem="Soma",
-                     codigo_aluno_origem="print(a + b)")
+                     enunciado_origem="Soma")
         texto = ReportExporter(caminho_saida_tmp())._formatar([(ex, p)])
 
-        self.assertIn("Código do aluno que originou esta pergunta:", texto)
+        self.assertIn("Código-base:", texto)
         self.assertIn("Enunciado original:", texto)
         self.assertIn("print(a + b)", texto)
-        self.assertNotIn("Seu código:", texto.lower())
+        self.assertNotIn("Seu código:", texto)
         # cabeçalho compatível com split_exercicios da correção
         self.assertIn("Exercício gerado com base na sua resposta da questão 1", texto)
         # seção de resposta futura presente
@@ -187,7 +188,7 @@ class ContratoGeracaoTests(unittest.TestCase):
             self.assertTrue(ex.enunciado_original,
                             f"Exercício {ex.numero} sem enunciado original")
             self.assertNotEqual(ex.enunciado_original, f"Questão {ex.numero}")
-            self.assertTrue(ex.codigo_aluno_anterior,
+            self.assertTrue(ex.codigo_base,
                             f"Exercício {ex.numero} sem código anterior")
 
 

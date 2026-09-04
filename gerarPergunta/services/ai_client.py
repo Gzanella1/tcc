@@ -47,12 +47,13 @@ class AIClient:
         perguntas = self._chamar_api(
             exercicio.numero,
             exercicio.titulo,
-            exercicio.codigo,
+            exercicio.codigo_base,
             tipo,
             prompt,
         )
 
-        # Transporta a origem para cada pergunta gerada.
+        # Transporta apenas a origem textual da pergunta. O codigo_base segue
+        # no Exercicio pareado e é exportado pela fronteira geração→correção.
         # conceito_avaliado/evidencia/resposta_esperada/rubrica permanecem
         # None: o sistema não inventa evidência nesta fase.
         return [
@@ -61,7 +62,6 @@ class AIClient:
                 pergunta=p.pergunta,
                 exercicio_numero=p.exercicio_numero,
                 enunciado_origem=exercicio.enunciado_original,
-                codigo_aluno_origem=exercicio.codigo_aluno_anterior,
             )
             for p in perguntas
         ]
@@ -76,12 +76,12 @@ class AIClient:
         self,
         numero: int,
         titulo: str,
-        codigo: str,
+        codigo_base: str,
         tipo: str,
         prompt: str,
     ) -> list[Pergunta]:
         # Usa uma chave imutável para o cache
-        chave = (numero, titulo, codigo, tipo)
+        chave = (numero, titulo, codigo_base, tipo)
         return self._chamar_api_cached(chave, prompt)
 
     @lru_cache(maxsize=200)

@@ -1,123 +1,148 @@
-Questões:
+Questões :
 
-1 - Desenvolva um algoritmo que leia dois números inteiros e exiba a soma, a subtração, amultiplicação e a divisão entre eles. Caso o segundo número seja igual a zero, o algoritmo  deve informar que a divisão não pode ser realizada.
-
-2 - Elabore um algoritmo que leia a nota de um aluno (de 0 a 10) e informe se ele está aprovado (nota maior ou igual a 7), em recuperação (nota entre 5 e 6,9) ou reprovado (nota inferior a 5).
-
-3 - Crie um algoritmo que leia 10 números inteiros. Ao final, o programa deve informar a soma de todos os números digitados, a média dos valores e qual foi o maior número informado.
-
-4 - Faça um algoritmo que leia um vetor com 10 números inteiros. Em seguida, o programa deve contar quantos números são pares e quantos são ímpares, exibindo essas quantidades ao final da execução.
-
-5 - Desenvolva um algoritmo para simular um caixa eletrônico. O programa deve ler um valor inteiro positivo informado pelo usuário e calcular a menor quantidade possível de cédulas necessárias para realizar o saque, considerando notas de R$100, R$50, R$20, R$10, R$5, R$2 e R$1. O algoritmo deve exibir a quantidade de cada cédula utilizada.
+1 - Caracteres únicos. Escreva uma função Python para verificar se uma string possui
+caracteres únicos. Por exemplo, a string “azul" não repete letras, mas a string
+“ferramenta"possui letras repetidas. A função deve receber uma string e retornar True no
+primeiro caso (letras únicas) ou False caso contrário (letras repetidas). Você deve usar
+conjuntos para implementar a função.
 
 
+2 - Diferença simétrica. Escreva uma função Python que recebe dois conjuntos de números
+inteiros M e N e retorna uma lista com sua diferença simétrica em ordem ascendente. O termo
+diferença simétrica denota os valores que existem nos conjuntos M ou N, mas não existem em
+ambos os conjuntos simultaneamente. Por exemplo, para os conjuntos M = {2, 4, 5, 9} e N =
+{2, 4, 11, 12}, a resposta deveria ser [5, 9, 11, 12].
 
+3 - Busca reversa. Escreva uma função chamada buscaReversa, que encontra todas as chaves
+de um dicionário que estão mapeadas para um determinado valor. A função deve receber
+como parâmetros um dicionário e um valor para ser buscado no dicionário. A função deve
+retornar uma lista (possivelmente vazia) com as chaves encontradas. Escreva uma função
+main para demonstrar sua função. Note que a função deve funcionar independentemente de
+ela retornar múltiplas chaves, uma única chave, ou nenhuma chave.
 
-resposta 1- 
+4 - Ordem Crescente. Escreva um programa Python que leia números inteiros (do usuário) e os
+armazena em uma lista. Seu programa deve continuar lendo inteiros até que o usuário entre
+com o valor 0 (zero). Então, o programa deve exibir em ordem crescente todos os números
+digitados pelo usuário sem incluir o valor 0, com um valor em cada linha impressa. Obs.: você
+pode implementar o algoritmo de ordenação BubbleSort ou usar o método sort ou a função
+sorted para ordenar a lista.
 
-# Leia dois números inteiros e exiba a soma, subtração,
-# multiplicação e divisão.
+5 - Ordem decrescente. Escreva um programa Python que leia números inteiros (do usuário) e
+os armazena em uma lista. Seu programa deve continuar lendo inteiros até que o usuário
+entre com o valor 0 (zero). Então, o programa deve exibir em ordem decrescente todos os
+números digitados pelo usuário sem incluir o valor 0, com um valor em cada linha impressa.
 
-num1 = int(input("Digite o primeiro número: "))
-num2 = int(input("Digite o segundo número: "))
-
-print("Soma:", num1)
-print("Subtração:", num1 )
-print("Multiplicação:", num1 )
-
-if num2 != 0:
-    print("Divisão:", num1 / num2)
-else:
-    print("Não é possível realizar divisão por zero.")
-
-
-resposta 2 - 
-# Leia a nota de um aluno e informe sua situação.
-
-nota = float(input("Digite a nota do aluno: "))
-
-if nota >= 7:
-    print("")
-elif nota >= 5:
-    print("Recuperação")
-else:
-    print("Reprovado")
+Respostas :
 
 
 
-resposta 3-     
+resposta 1 -
 
-# Leia 10 números inteiros e informe a soma,
-# média e o maior número.
+def verifica_palavra(s):
+    conjuntos= set()
+    for carater in s:
+        conjuntos.add(carater)
+    if len(conjuntos)== len(s):
+        return True
+    return False
 
-soma = 0
-maior = None
+def main():
+    s=input("digite uma palavra: ")
+    print(verifica_palavra(s))
 
-for i in range(10):
-    numero = int(input(f"Digite o {i+1}º número: "))
-    soma += numero
+main()
 
-    if maior is None or numero > maior:
-        maior = numero
 
-media = soma
+resposta 2 -
 
-print("Soma:", soma)
-print("Média:", media)
-print("Maior número:", maior)
+def diferenca_simetrica(m,n):
+    c1 = m.union(n)
+    c2 = m.intersection(n)
+
+    return c1.difference(c2)
+
+def main():
+    m={1,2,3,4,5,6}
+    n={1,2,7,8,9,10}
+    print(diferenca_simetrica(m,n))
+main()
+
+
+
+resposta 3 -
+
+def busca_por_valores(d1,n):
+    lista=[]
+    for x, y in d1.items():
+        if y==n:
+            lista.append(x)
+
+    return(lista)
+
+
+def main():
+    d1={}
+    while True:
+        chave=input("digite uma chave: ")
+        if chave =="":
+            break
+        valor=(input("digite um valor: "))
+        d1[chave]=valor
+    n=input("digite o valor para buscar as chaves: ")
+    chaves=busca_por_valores(d1,n)
+    print(chaves)
+
+main()
 
 
 resposta 4 - 
-# Leia um vetor com 10 números inteiros e informe
-# quantos são pares e quantos são ímpares.
-
-vetor = []
-pares = 0
-impares = 0
-
-for i in range(10):
-    numero = int(input(f"Digite o {i+1}º número: "))
-    vetor.append(numero)
-
-for numero in vetor:
-    if numero % 2 == 0:
-        pares += 1
+lista = []
+while True:
+    n = int(input("digite um numero:"))
+    if (n==0):
+        break
     else:
-        impares += 1
+        lista.append(n)
 
-print("Quantidade de números pares:", pares)
-print("Quantidade de números ímpares:", impares)
+novalista =sorted(lista)
+for i in novalista:
+    print(i)
 
-resposta 5- 
 
-# Simulação de um caixa eletrônico.
+resposta 5 - 
+lista = []
+while True:
+    n = int(input("digite um numero:"))
+    if (n == 0):
+        break
+    else:
+        lista.append(n)
+lista.sort(reverse=True)
+for i in lista:
+    print(i)
 
-valor = int(input("Digite o valor do saque: "))
 
-notas100 = valor // 100
-valor = valor % 100
 
-notas50 = valor // 50
-valor = valor % 50
 
-notas20 = valor // 20
-valor = valor % 20
 
-notas10 = valor // 10
-valor = valor % 10
 
-notas5 = valor // 5
-valor = valor % 5
 
-notas2 = valor // 2
-valor = valor % 2
 
-notas1 = valor
 
-print("Notas de R$100:", notas100)
-print("Notas de R$50:", notas50)
-print("Notas de R$20:", notas20)
-print("Notas de R$10:", notas10)
-print("Notas de R$5:", notas5)
-print("Notas de R$2:", notas2)
-print("Notas de R$1:", notas1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

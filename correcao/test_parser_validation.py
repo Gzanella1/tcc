@@ -143,20 +143,52 @@ print(nome)
         self.assertEqual(resultado.status, STATUS_ERRO_ENTRADA)
         self.assertTrue(any("codigo_base" in d for d in resultado.detalhes))
 
-    def test_entrada_ausente_e_erro_de_entrada(self):
+    def test_entrada_ausente_nao_e_erro_para_previsao(self):
+        # Contrato PREVISAO: entradaTestes é OPCIONAL. A entrada pode vir do
+        # enunciado; ausência não configura erro_entrada.
         q = Questao(
             idx=1,
             tipo="previsao",
-            enunciado="Qual sera a saida?",
-            codigo_base="print(input())",
-            resposta_aluno="1",
+            enunciado="Se o usuário digitar os números 5, -3, 0 para encerrar, qual será a saída?",
+            codigo_base="print(int(input()))",
+            resposta_aluno="5",
         )
 
-        resultado = validar_questao(q)
+        self.assertIsNone(validar_questao(q))
 
-        self.assertIsNotNone(resultado)
-        self.assertEqual(resultado.status, STATUS_ERRO_ENTRADA)
-        self.assertTrue(any("entrada" in d for d in resultado.detalhes))
+    def test_previsao_extrai_enumeracao_narrativa_como_entrada(self):
+        texto = """
+1 - [PREVISAO] Se o usuário digitar os números 5, -3, 0, 1, 0, -1 e
+depois 0 para encerrar, qual será a saída esperada do programa?
+
+Código-base:
+----------------------------------------
+lista = []
+while True:
+    n = int(input("digite um numero:"))
+    if (n == 0):
+        break
+    else:
+        lista.append(n)
+novalista = sorted(lista)
+for i in novalista:
+    print(i)
+----------------------------------------
+
+resposta 1 -
+-3
+5
+"""
+
+        q = self._carregar_texto(texto)[0]
+
+        self.assertEqual(q.tipo, "previsao")
+        # Os números citados no enunciado viram a entrada da execução.
+        self.assertEqual(q.entradaTestes, "5\n-3\n0\n1\n0\n-1\n0\n")
+        # A previsão do aluno permanece como resposta_aluno; nunca vira código.
+        self.assertEqual(q.resposta_aluno, "-3\n5")
+        self.assertEqual(q.codigo_aluno_resposta, "")
+        self.assertIsNone(validar_questao(q))
 
     def test_testes_ausentes_em_codigo_sem_input_sao_inconclusivos(self):
         q = Questao(

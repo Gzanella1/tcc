@@ -63,7 +63,8 @@ class QuestionBuilder:
         return (
             f"Exercício {exercicio.numero}.\n\n"
             f"Enunciado original:\n{exercicio.enunciado_original}\n\n"
-            f"Código produzido pelo aluno:\n{exercicio.codigo_aluno_anterior}\n"
+            "Código anterior do aluno (contexto/apoio; não é gabarito):\n"
+            f"{exercicio.codigo_base}\n"
         )
 
     def _rodape(self, tipo: str) -> str:
@@ -73,14 +74,54 @@ class QuestionBuilder:
     # Um método por tipo de pergunta
     # ------------------------------------------------------------------
 
+
     def _correcao(self, exercicio: Exercicio) -> str:
         return (
-            "Você é um tutor de programação.\n\n"
-            "Gere 1 pergunta do tipo CORREÇÃO que leve o aluno a identificar "
-            "um possível erro lógico, sintático ou de borda no código.\n\n"
-            + self._cabecalho(exercicio)
-            + self._rodape("correcao")
+            "Você é um tutor de programação especializado em análise rigorosa de código Python.\n\n"
+
+            "Sua tarefa é analisar o código produzido pelo aluno e verificar se existe "
+            "um erro REAL que possa originar uma pergunta do tipo CORREÇÃO.\n\n"
+
+            "REGRA PRINCIPAL:\n"
+            "NUNCA invente um erro apenas para gerar uma pergunta.\n"
+            "Se o código estiver correto, não crie uma falsa afirmação de erro.\n\n"
+
+            "COMO ANALISAR O CÓDIGO:\n"
+            "1. Verifique a sintaxe real do código.\n"
+            "2. Verifique a lógica e o comportamento do algoritmo.\n"
+            "3. Verifique condições de borda.\n"
+            "4. Verifique se os identificadores usados são consistentes dentro do próprio código.\n"
+            "5. NÃO considere um identificador errado apenas porque poderia ter outro nome.\n"
+            "6. Por exemplo, se uma variável chamada 'carater' é criada e usada consistentemente "
+            "como 'carater', isso NÃO é erro. O fato de existir a palavra 'caracter' como outra "
+            "grafia possível não torna 'carater' incorreto.\n"
+            "7. NÃO classifique diferenças de nomenclatura, estilo ou preferência pessoal como erro.\n"
+            "8. Considere formas matemáticas e lógicas equivalentes como corretas.\n"
+            "9. Só considere algo um erro se puder demonstrar objetivamente, a partir do código, "
+            "que ele produz comportamento incorreto, erro de execução, erro de sintaxe ou falha "
+            "em algum caso válido.\n\n"
+
+            "VALIDAÇÃO OBRIGATÓRIA:\n"
+            "Antes de formular a pergunta, tente refutar a hipótese de erro.\n"
+            "Pergunte a si mesmo: 'Esse trecho realmente está incorreto ou apenas poderia "
+            "ser escrito de outra maneira?'\n"
+            "Se estiver correto, NÃO invente um problema.\n\n"
+
+            "DADOS PARA ANÁLISE:\n"
+            f"Enunciado original:\n{exercicio.enunciado_original}\n\n"
+            f"Código produzido pelo aluno:\n{exercicio.codigo_base}\n\n"
+
+            "CRITÉRIO PARA GERAR A PERGUNTA:\n"
+            "A pergunta somente pode ser gerada se existir um erro real, verificável e "
+            "explicável diretamente pelo código.\n\n"
+
+            "Retorne APENAS JSON válido neste formato:\n"
+            '[{"tipo": "correcao", "pergunta": "<pergunta baseada em erro real>"}]\n\n'
+
+    
         )
+
+
 
     def _justificativa(self, exercicio: Exercicio) -> str:
         return (

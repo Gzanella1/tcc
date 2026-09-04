@@ -32,7 +32,13 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from models.questao import Questao
-from utils.text import extrair_codigo, normalizar_label, normalizar_texto, sem_acentos
+from utils.text import (
+    extrair_codigo,
+    extrair_entradas_de_enunciado,
+    normalizar_label,
+    normalizar_texto,
+    sem_acentos,
+)
 from utils.tipo import normalizar_tipo, inferir_tipo
 
 
@@ -651,6 +657,7 @@ def carregar_questoes(path: Path) -> List[Questao]:
 
     return [parse_block(bloco, i + 1) for i, bloco in enumerate(blocos)]
 
+
 def extrair_entradas(enunciado: str, tipo: str = "") -> str:
     """
     Extrai entrada estruturada de enunciados legados.
@@ -678,3 +685,44 @@ def extrair_entradas(enunciado: str, tipo: str = "") -> str:
                 return "\n".join(valores) + "\n"
 
     return ""
+
+# parsing/parser.py
+
+_RE_VERBO_ENTRADA = re.compile(
+    r"(?i)\b(?:digitar|digite|informar|informe|inserir|insira|"
+    r"entrar\s+com|entre\s+com|fornecer|forne[cç]a|passar|passe)\b"
+)
+_RE_NUMERO_PROSA = re.compile(r"-?\d+(?:[.,]\d+)?")
+
+
+def _extrair_sequencia_numeros_previsao(enunciado: str) -> str:
+    """
+    Extrai, de forma genérica, uma sequência de números descrita em PROSA
+    no enunciado de uma questão de PREVISÃO, no padrão:
+        "Se o usuário digitar os números 5, -3, 0, ... e depois 0 para encerrar"
+
+    Não depende de rótulos "Entrada:" nem de aspas: localiza o primeiro
+    verbo de entrada (digitar/informar/inserir/...) e extrai, em ordem,
+    todos os números literais que aparecem dali até o fim da frase.
+    Cada número vira uma linha do stdin simulado (uma chamada input()).
+    """
+    if not enunciado:
+        return ""
+
+    m = _RE_VERBO_ENTRADA.search(enunciado)
+    if not m:
+        return ""
+
+    trecho = enunciado[m.end():]
+    fim = re.search(r"[?.]", trecho)
+    if fim:
+        trecho = trecho[:fim.start()]
+
+    numeros = [n.replace(",", ".") for n in _RE_NUMERO_PROSA.findall(trecho)]
+
+    # Exige pelo menos 2 números para evitar falso positivo com frases
+    # que citam apenas um valor solto sem relação com entrada de dados.
+    if len(numeros) < 2:
+        return ""
+
+    return "\n".join(numeros) + "\n"

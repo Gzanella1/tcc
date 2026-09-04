@@ -4,7 +4,7 @@
 # com as questões e respostas dos alunos.
 #
 # Fase 3.1: o enunciado original de cada questão é preservado
-# separadamente do código produzido pelo aluno. Formatos de
+# separadamente do codigo_base (código anterior produzido pelo aluno). Formatos de
 # enunciado aceitos: "N. Título" (legado) e "N - Enunciado"
 # (formato real do conhecimento.txt). Linhas de enunciado só são
 # reconhecidas FORA de blocos "resposta", para nunca capturar
@@ -30,7 +30,7 @@ class KnowledgeLoader:
         <código produzido anteriormente pelo aluno>
 
     e retorna uma lista de objetos Exercicio contendo, separadamente,
-    o enunciado original e a resposta/código anterior do aluno.
+    o enunciado original e o codigo_base.
     """
 
     # Regex compiladas uma única vez (melhor performance)
@@ -64,7 +64,7 @@ class KnowledgeLoader:
 
         Retorna:
             enunciados – {numero: "enunciado original da questão"}
-            respostas  – {numero: "código produzido anteriormente pelo aluno"}
+            respostas  – {numero: "codigo_base da questão gerada"}
         """
         enunciados: dict[int, str] = {}
         respostas: dict[int, str] = {}
@@ -115,9 +115,8 @@ class KnowledgeLoader:
         return [
             Exercicio(
                 numero=num,
-                titulo=enunciados.get(num, ""),
-                codigo=respostas[num],
                 enunciado_original=enunciados.get(num, ""),
+                codigo_base=respostas[num],
             )
             for num in sorted(respostas)
         ]

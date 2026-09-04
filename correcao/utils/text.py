@@ -181,6 +181,65 @@ def codigo_tem_input(codigo: str) -> bool:
     return bool(re.search(r"\binput\s*\(", codigo))
 
 
+def extrair_entradas_de_enunciado(enunciado: str, tipo: str = "") -> str:
+    """
+    Extrai a entrada (stdin) declarada no enunciado de uma questao.
+
+    Formatos suportados:
+    1. Linhas "Entrada: ..." (uma ou varias linhas).
+    2. Vetor/lista entre colchetes em questoes de PREVISAO
+       (ex.: "Dado o vetor [2, 3, 4]").
+    3. Enumeracao narrativa de PREVISAO
+       (ex.: "Se o usuário digitar os números 5, -3, 0, ... e depois 0 para
+       encerrar, qual será a saída esperada do programa?").
+
+    Retorna a entrada como texto multilinha (cada valor em uma linha) ou ""
+    quando nao ha entrada declarada. Para PREVISAO, a entrada do enunciado e
+    o proprio dado que alimenta a execucao do codigo-base, permitindo que
+    entradaTestes seja opcional.
+    """
+    texto = enunciado or ""
+
+    entradas = re.findall(r"(?im)^\s*Entrada\s*:\s*(.+?)\s*$", texto)
+    if entradas:
+        return "\n".join(e.strip() for e in entradas if e.strip()) + "\n"
+
+    if tipo != "previsao":
+        return ""
+
+    texto_norm = sem_acentos(texto.lower())
+
+    if "vetor" in texto_norm or "lista" in texto_norm:
+        m = re.search(r"\[([^\]]+)\]", texto)
+        if m:
+            valores = [
+                v.strip().strip("\"'")
+                for v in m.group(1).split(",")
+                if v.strip()
+            ]
+            if valores:
+                return "\n".join(valores) + "\n"
+
+    m = re.search(
+        r"\bdigitar\s+o?s?\s+(?:seguintes?\s+)?"
+        r"(?:n[úu]meros?|valores?|inteiros?|dados?)"
+        r"\s*:?\s*(.+?)(?:\?|$|\b(?:qual|o\s+que|quanto|quantos)\b)",
+        texto,
+        re.I | re.S,
+    )
+    if m:
+        trecho = m.group(1)
+        # Evita falso positivo de intervalo ("números entre 1 e 100"), que
+        # descreve uma faixa, não uma sequência concreta de entrada.
+        if "entre" in sem_acentos(trecho.lower()):
+            return ""
+        valores = [v for v in re.findall(r"-?\d+(?:[.,]\d+)?", trecho) if v]
+        if valores:
+            return "\n".join(valores) + "\n"
+
+    return ""
+
+
 # ─── Classificação de erros de execução ──────────────────────────────────────
 
 # Classificações de erro usadas pela camada de avaliação para distinguir
@@ -543,3 +602,51 @@ def remover_prompts_saida(texto: str, prompts_input: Iterable[str]) -> str:
     texto = re.sub(r"[ \t]+\n", "\n", texto)
     texto = re.sub(r"\n{3,}", "\n\n", texto)
     return normalizar_texto(texto)
+
+
+
+
+def codigo_tem_input_em_loop(codigo: str) -> bool:
+    """
+    Verifica se alguma chamada a input() ocorre dentro de um laço (for/while).
+
+    Indica uma interface DINÂMICA: a quantidade de chamadas input() em
+    tempo de execução não é fixa (depende de quantas iterações o fluxo
+    realizar), então não pode ser validada por contagem estática de
+    assinatura como as interfaces de tamanho fixo.
+    """
+    if not codigo:
+        return False
+    try:
+        arvore = ast.parse(codigo)
+    except SyntaxError:
+        return False
+
+    pilha_loops: list = []
+
+    class _Visitor(ast.NodeVisitor):
+        def __init__(self):
+            self.encontrou = False
+
+        def visit_For(self, node):
+            pilha_loops.append(node)
+            self.generic_visit(node)
+            pilha_loops.pop()
+
+        def visit_While(self, node):
+            pilha_loops.append(node)
+            self.generic_visit(node)
+            pilha_loops.pop()
+
+        def visit_Call(self, node):
+            if (
+                pilha_loops
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "input"
+            ):
+                self.encontrou = True
+            self.generic_visit(node)
+
+    v = _Visitor()
+    v.visit(arvore)
+    return v.encontrou
