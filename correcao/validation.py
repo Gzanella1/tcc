@@ -9,10 +9,9 @@ Validacao do contrato de dados de uma Questao antes da correcao.
 Contrato canônico:
 - MODIFICACAO exige apenas {enunciado, codigo_aluno_resposta}. O campo
   codigo_base é OPCIONAL: sua ausência NÃO configura erro_entrada.
-- PREVISAO exige {enunciado, codigo_base, resposta_aluno}. A entrada de
-  execução NÃO é obrigatória: pode vir de entradaTestes ou ser derivada do
-  enunciado pela estratégia ("Entrada: ...", "vetor [...]" ou enumeração
-  narrativa como "digitar os números 5, -3, ...").
+- PREVISAO exige {enunciado, codigo_base, resposta_aluno, entradaTestes}.
+  A entrada de execução é OBRIGATÓRIA e é produzida na GERAÇÃO (dados_entrada
+  → entradaTestes), nunca derivada do enunciado na correção.
 - codigo_base nunca é exigido como régua; nunca é usado para gerar testes
   que avaliem o próprio aluno (apenas para compreender a interface).
 """
@@ -144,8 +143,12 @@ def validar_questao(q: Questao) -> Optional[Resultado]:
     if tipo == "previsao":
         if not normalizar_texto(q.codigo_base):
             _registrar("codigo_base")
-        # entradaTestes é OPCIONAL: a entrada pode ser derivada do enunciado
-        # pela estratégia (utils.text.extrair_entradas_de_enunciado).
+        # entradaTestes é OBRIGATÓRIO para PREVISAO: a entrada de execução é
+        # produzida deterministicamente na GERAÇÃO (dados_entrada →
+        # entradaTestes) e validada lá por execução; a correção nunca deriva
+        # a entrada do enunciado.
+        if not normalizar_texto(q.entradaTestes):
+            _registrar("entradaTestes")
         if not normalizar_texto(q.resposta_aluno):
             _registrar("resposta_aluno")
 

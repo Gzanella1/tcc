@@ -1,38 +1,51 @@
+============================================================
+Exercício gerado com base na sua resposta da questão 2
+============================================================
+
+1 - [CORRECAO] 
+----------------------------------------
+
+resposta 1 -
+
 
 ============================================================
 Exercício gerado com base na sua resposta da questão 3
 ============================================================
 
-3 - [PREVISAO] Dado o dicionário {"a": 5, "b": 3, "c": 5}, 
-e a entrada de busca "5", qual será a saída esperada da função buscaReversa?
-Considere também o caso em que o valor buscado não existe no dicionário.
+2 - [MODIFICACAO] Adicione uma nova funcionalidade à função buscaReversa para que ela também retorne os valores associados às chaves encontradas, mantendo a ordem de busca reversa.
 
 Código-base:
 ----------------------------------------
-def busca_por_valores(d1,n):
-    lista=[]
-    for x, y in d1.items():
-        if y==n:
-            lista.append(x)
+[O ALUNO NÃO ESCREVEU CÓDIGO]
+----------------------------------------
 
-    return(lista)
+resposta 2 -
 
 
-def main():
-    d1={}
-    while True:
-        chave=input("digite uma chave: ")
-        if chave =="":
-            break
-        valor=(input("digite um valor: "))
-        d1[chave]=valor
-    n=input("digite o valor para buscar as chaves: ")
-    chaves=busca_por_valores(d1,n)
-    print(chaves)
+============================================================
+Exercício gerado com base na sua resposta da questão 4
+============================================================
 
-main()
+3 - [JUSTIFICATIVA] 
+
+Código-base:
+----------------------------------------
+[O ALUNO NÃO ESCREVEU CÓDIGO]
 ----------------------------------------
 
 resposta 3 -
 
-['a', 'c']
+
+============================================================
+Exercício gerado com base na sua resposta da questão 5
+============================================================
+
+4 - [DESCRITIVA] 
+
+Código-base:
+----------------------------------------
+[O ALUNO NÃO ESCREVEU CÓDIGO]
+----------------------------------------
+
+resposta 4 -
+

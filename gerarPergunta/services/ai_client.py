@@ -11,6 +11,7 @@ from openai import OpenAI
 from config.settings import LM_STUDIO_BASE_URL, LM_STUDIO_API_KEY, MODEL, TEMPERATURE
 from models.pergunta import Pergunta
 from models.exercicio import Exercicio
+from services.dados_entrada import gerar_entrada_testes
 from services.question_builder import QuestionBuilder
 
 
@@ -56,15 +57,34 @@ class AIClient:
         # no Exercicio pareado e é exportado pela fronteira geração→correção.
         # conceito_avaliado/evidencia/resposta_esperada/rubrica permanecem
         # None: o sistema não inventa evidência nesta fase.
-        return [
-            Pergunta(
+        #
+        # Para PREVISAO, dados_entrada → entradaTestes é a transformação
+        # DETERMINÍSTICA da fronteira. Ela roda AQUI (geração) e é validada
+        # por execução de referência: perguntas cujo dados_entrada não gera
+        # entrada executável (formato desconhecido, entrada vazia, código que
+        # falha/timeout ou não produz saída) são REJEITADAS na geração.
+        resultado: list[Pergunta] = []
+        for p in perguntas:
+            nova = Pergunta(
                 tipo=p.tipo,
                 pergunta=p.pergunta,
                 exercicio_numero=p.exercicio_numero,
                 enunciado_origem=exercicio.enunciado_original,
+                dados_entrada=p.dados_entrada,
             )
-            for p in perguntas
-        ]
+            if p.tipo.lower() == "previsao":
+                ok, motivo, entrada, _saida = gerar_entrada_testes(
+                    p.dados_entrada, exercicio.codigo_base
+                )
+                if not ok:
+                    print(
+                        f"  ⚠️  Pergunta PREVISAO rejeitada na geração "
+                        f"({motivo}): {p.pergunta[:80]}"
+                    )
+                    continue
+                nova.entrada_testes = entrada
+            resultado.append(nova)
+        return resultado
 
     # ------------------------------------------------------------------
     # Chamada à API com cache
@@ -123,7 +143,12 @@ class AIClient:
             tipo     = item.get("tipo",     "desconhecido")
             pergunta = item.get("pergunta", "").strip()
             if pergunta:
-                perguntas.append(Pergunta(tipo=tipo, pergunta=pergunta, exercicio_numero=exercicio_numero))
+                perguntas.append(Pergunta(
+                    tipo=tipo,
+                    pergunta=pergunta,
+                    exercicio_numero=exercicio_numero,
+                    dados_entrada=item.get("dados_entrada"),
+                ))
 
         return perguntas
 

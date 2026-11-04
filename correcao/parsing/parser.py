@@ -18,7 +18,14 @@ Contrato canônico produzido:
                           Extraído da região de resposta (blocos delimitados
                           por "---", cercas ``` ou rótulo "Código:").
                           Nunca alimenta codigo_base.
-- entradaTestes         : entradas declaradas/enumeradas no enunciado.
+- entradaTestes         : entrada de execução OBRIGATÓRIA para PREVISAO.
+                          A geração a produz deterministicamente (dados_entrada
+                          → entradaTestes) e a exporta como linha única
+                          "entradaTestes: <json string>"; o parser de texto a
+                          reconhece fora da região de resposta. Nunca é
+                          derivada do enunciado aqui. "dados_entrada" é campo
+                          intermediário da GERAÇÃO e NUNCA persiste em Questao
+                          nem em extras.
 - extras                : apenas metadados/rastreabilidade sem campo canônico
                           (ex.: enunciado_origem). Nenhum dado com campo
                           canônico é espelhado aqui.
@@ -34,7 +41,6 @@ from typing import Any, Dict, List
 from models.questao import Questao
 from utils.text import (
     extrair_codigo,
-    extrair_entradas_de_enunciado,
     normalizar_label,
     normalizar_texto,
     sem_acentos,
@@ -93,6 +99,9 @@ ALIASES_CAMPOS: Dict[str, str] = {
     "stdin":                     "entradaTestes",
     "input":                     "entradaTestes",
     "entrada":                   "entradaTestes",
+    "entradaTestes":             "entradaTestes",
+    "entrada testes":            "entradaTestes",
+    "entrada de testes":         "entradaTestes",
     "saida":                     "saidaTestes",
     "saída":                     "saidaTestes",
     "output":                    "saida_esperada",
@@ -113,6 +122,12 @@ ALIASES_CAMPOS.pop("NOVO", None)
 
 _ALIASES_NORMALIZADOS = {
     normalizar_label(chave): valor for chave, valor in ALIASES_CAMPOS.items()
+}
+
+# Campos intermediários do pipeline de GERAÇÃO (nunca viram Questao/extras).
+_CAMPOS_INTERMEDIARIOS_GERACAO = {
+    normalizar_label("dados_entrada"),
+    "dados_entrada",
 }
 
 # Linha separadora de código (ex: ----------------------------------------)
@@ -138,6 +153,12 @@ _ROTULO_CODIGO_BASE_ORIGEM = re.compile(
     r"(?i)^(?:o\s+)?(?:c[oó]digo\s+do\s+aluno\s+que\s+originou\s+esta\s+pergunta|c[oó]digo[- ]?base)\s*:?\s*$"
 )
 
+# Rótulo exportado pela GERAÇÃO com a entrada de execução de PREVISAO
+# (JSON string em linha única, ex.: entradaTestes: "a\n5\nb\n3\nc\n5\n\n5\n").
+_RE_ROTULO_ENTRADA_TESTES = re.compile(
+    r"(?i)^entrada[- ]?testes?\s*:\s*(.*)$"
+)
+
 
 def _campo(item: Dict[str, Any], *nomes: str, default: Any = "") -> Any:
     """Busca o primeiro campo existente em um dicionario ja normalizado."""
@@ -153,6 +174,10 @@ def _normalizar_item_json(item: Dict[str, Any]) -> Dict[str, Any]:
     extras: Dict[str, Any] = {}
 
     for chave, valor in item.items():
+        if normalizar_label(str(chave)) in _CAMPOS_INTERMEDIARIOS_GERACAO:
+            # Campo intermediário do pipeline de GERAÇÃO (ex.: dados_entrada)
+            # não persiste em Questao nem vaza para extras.
+            continue
         canonica = _ALIASES_NORMALIZADOS.get(normalizar_label(str(chave)))
         if canonica:
             normalizado[canonica] = valor
@@ -357,6 +382,7 @@ def parse_block(block: str, idx: int) -> Questao:
     resposta_linhas       = []   # parte TEXTUAL da resposta
     resposta_cod_linhas   = []   # código entregue pelo aluno na resposta
     codigo_linhas         = []   # código-base (contexto)
+    entrada_teste         = ""   # seção "entradaTestes:" exportada pela GERAÇÃO
 
     # Estados da máquina de captura
     capturando_enunciado = False
@@ -429,6 +455,14 @@ def parse_block(block: str, idx: int) -> Questao:
 
         # ── Continuação do enunciado (antes do código ou da resposta) ────────
         if tipo and not capturando_codigo and not capturando_resposta:
+            m_entrada = _RE_ROTULO_ENTRADA_TESTES.match(linha_strip)
+            if m_entrada:
+                valor = m_entrada.group(1).strip()
+                try:
+                    entrada_teste = json.loads(valor) if valor else ""
+                except Exception:
+                    entrada_teste = valor  # fallback defensivo: texto bruto
+                continue
             if _RE_ROTULO_CODIGO_BASE.match(linha_strip):
                 capturando_enunciado = False
                 capturando_codigo    = True
@@ -545,7 +579,7 @@ def parse_block(block: str, idx: int) -> Questao:
         codigo_base=codigo_base,
         codigo_aluno_resposta=codigo_da_resposta,
         saida_esperada="",
-        entradaTestes=extrair_entradas(enunciado_bruto, tipo_norm),
+        entradaTestes=entrada_teste,
         saidaTestes="",
         testes=[],
         extras=extras,
@@ -635,9 +669,8 @@ def carregar_questoes(path: Path) -> List[Questao]:
                     codigo_base=codigo_base,
                     codigo_aluno_resposta=codigo_aluno_resposta,
                     saida_esperada=normalizar_texto(str(_campo(dados, "saida_esperada"))),
-                    entradaTestes=(
-                        normalizar_texto(str(_campo(dados, "entradaTestes")))
-                        or extrair_entradas(enunciado, tipo_norm)
+                    entradaTestes=normalizar_texto(
+                        str(_campo(dados, "entradaTestes"))
                     ),
                     saidaTestes=normalizar_texto(str(_campo(dados, "saidaTestes"))),
                     testes=parse_tests_field(testes_str),
@@ -657,34 +690,6 @@ def carregar_questoes(path: Path) -> List[Questao]:
 
     return [parse_block(bloco, i + 1) for i, bloco in enumerate(blocos)]
 
-
-def extrair_entradas(enunciado: str, tipo: str = "") -> str:
-    """
-    Extrai entrada estruturada de enunciados legados.
-
-    Suporta:
-    - linhas "Entrada: ..."
-    - questoes de previsao com vetor/lista no enunciado, como
-      "Dado o vetor [2, 3, 4]".
-    """
-    entradas = re.findall(r"(?im)^\s*Entrada\s*:\s*(.+?)\s*$", enunciado)
-    if entradas:
-        return "\n".join(e.strip() for e in entradas if e.strip()) + "\n"
-
-    texto = enunciado or ""
-    texto_norm = sem_acentos(texto.lower())
-    if tipo == "previsao" and "vetor" in texto_norm:
-        m = re.search(r"\[([^\]]+)\]", texto)
-        if m:
-            valores = [
-                v.strip().strip("\"'")
-                for v in m.group(1).split(",")
-                if v.strip()
-            ]
-            if valores:
-                return "\n".join(valores) + "\n"
-
-    return ""
 
 # parsing/parser.py
 

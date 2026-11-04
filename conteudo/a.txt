@@ -1,0 +1,164 @@
+============================================================
+Exercício gerado com base na sua resposta da questão 1
+============================================================
+
+1 - [JUSTIFICATIVA] Por que você escolheu usar um conjunto (set) para verificar 
+se todos os caracteres na string são únicos? Explique a vantagem dessa abordagem 
+em relação a outras possibilidades.
+
+Código-base:
+----------------------------------------
+def verifica_palavra(s):
+    conjuntos= set()
+    for carater in s:
+        conjuntos.add(carater)
+    if len(conjuntos)== len(s):
+        return True
+    return False
+
+def main():
+    s=input("digite uma palavra: ")
+    print(verifica_palavra(s))
+
+main()
+----------------------------------------
+
+resposta 1 -
+
+Eu escolhi usar um conjunto (set) porque ele não permite elementos repetidos.
+tenho um conjunto e Se forem iguais, significa que todos os caracteres são únicos.
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 2
+============================================================
+
+2 - [PREVISAO] Dado os conjuntos m = {1, 2, 3, 4, 5, 6} e n = {1, 2, 7, 8, 9, 10}, qual será a saída esperada da função diferenca_simetrica(m, n)?
+
+Código-base:
+----------------------------------------
+def diferenca_simetrica(m,n):
+    c1 = m.union(n)
+    c2 = m.intersection(n)
+
+    return c1.difference(c2)
+
+def main():
+    m={1,2,3,4,5,6}
+    n={1,2,7,8,9,10}
+    print(diferenca_simetrica(m,n))
+main()
+----------------------------------------
+
+entradaTestes: "1\n2\n3\n4\n5\n6\n1\n2\n7\n8\n9\n10\n"
+
+resposta 2 -
+
+{3, 4, 5, 6, 7, 8, 9, 10}
+
+============================================================
+Exercício gerado com base na sua resposta da questão 3
+============================================================
+
+3 - [MODIFICACAO] Modifique a função buscaReversa para que, ao invés de buscar chaves por valor, ela busque valores por chave, ou seja, dado um dicionário e uma chave, retorne o valor associado a essa chave. Como faria essa alteração?
+
+Código-base:
+----------------------------------------
+def busca_por_valores(d1,n):
+    lista=[]
+    for x, y in d1.items():
+        if y==n:
+            lista.append(x)
+
+    return(lista)
+
+
+def main():
+    d1={}
+    while True:
+        chave=input("digite uma chave: ")
+        if chave =="":
+            break
+        valor=(input("digite um valor: "))
+        d1[chave]=valor
+    n=input("digite o valor para buscar as chaves: ")
+    chaves=busca_por_valores(d1,n)
+    print(chaves)
+
+main()
+----------------------------------------
+
+resposta 3 -
+
+----------------------------------------
+def busca_reversa(d1, chave):
+    return d1[chave]
+
+
+def main():
+    d1={}
+    while True:
+        chave=input("digite uma chave: ")
+        if chave =="":
+            break
+        valor=input("digite um valor: ")
+        d1[chave]=valor
+
+    chave=input("digite a chave para buscar o valor: ")
+    valor=busca_reversa(d1,chave)
+    print(valor)
+
+main()
+----------------------------------------
+
+============================================================
+Exercício gerado com base na sua resposta da questão 4
+============================================================
+
+4 - [CORRECAO] O código apresenta um erro real? Se sim, qual é a natureza do erro e como ele afeta o comportamento esperado do programa?
+
+Código-base:
+----------------------------------------
+lista = []
+while True:
+    n = int(input("digite um numero:"))
+    if (n==0):
+        break
+    else:
+        lista.append(n)
+
+novalista =sorted(lista)
+for i in novalista:
+    print(i)
+----------------------------------------
+
+resposta 4 -
+Não, o código não apresenta um erro de lógica.
+Ele funciona corretamente quando o usuário digita números inteiros. 
+O programa para quando é digitado 0, ordena os números da lista e depois
+imprime os valores em ordem crescente.
+
+============================================================
+Exercício gerado com base na sua resposta da questão 5
+============================================================
+
+5 - [DESCRITIVA] Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando cada parte do programa.
+
+Código-base:
+----------------------------------------
+lista = []
+while True:
+    n = int(input("digite um numero:"))
+    if (n == 0):
+        break
+    else:
+        lista.append(n)
+lista.sort(reverse=True)
+for i in lista:
+    print(i)
+----------------------------------------
+
+resposta 5 -
+
+O código começa criando uma lista vazia. Depois, ele pede números ao usuário dentro de um laço while. Quando o usuário digita 0, o programa para de pedir números. Os outros números são adicionados na lista. Depois, a lista é organizada em ordem decrescente com sort(reverse=True).
+ Por fim, o for percorre a lista e mostra cada número na tela.

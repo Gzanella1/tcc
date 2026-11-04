@@ -38,89 +38,13 @@ Respostas :
 
 resposta 1 -
 
-def verifica_palavra(s):
-    conjuntos= set()
-    for carater in s:
-        conjuntos.add(carater)
-    if len(conjuntos)== len(s):
-        return True
-    return False
-
-def main():
-    s=input("digite uma palavra: ")
-    print(verifica_palavra(s))
-
-main()
-
-
 resposta 2 -
-
-def diferenca_simetrica(m,n):
-    c1 = m.union(n)
-    c2 = m.intersection(n)
-
-    return c1.difference(c2)
-
-def main():
-    m={1,2,3,4,5,6}
-    n={1,2,7,8,9,10}
-    print(diferenca_simetrica(m,n))
-main()
-
-
 
 resposta 3 -
 
-def busca_por_valores(d1,n):
-    lista=[]
-    for x, y in d1.items():
-        if y==n:
-            lista.append(x)
-
-    return(lista)
-
-
-def main():
-    d1={}
-    while True:
-        chave=input("digite uma chave: ")
-        if chave =="":
-            break
-        valor=(input("digite um valor: "))
-        d1[chave]=valor
-    n=input("digite o valor para buscar as chaves: ")
-    chaves=busca_por_valores(d1,n)
-    print(chaves)
-
-main()
-
-
 resposta 4 - 
-lista = []
-while True:
-    n = int(input("digite um numero:"))
-    if (n==0):
-        break
-    else:
-        lista.append(n)
-
-novalista =sorted(lista)
-for i in novalista:
-    print(i)
-
 
 resposta 5 - 
-lista = []
-while True:
-    n = int(input("digite um numero:"))
-    if (n == 0):
-        break
-    else:
-        lista.append(n)
-lista.sort(reverse=True)
-for i in lista:
-    print(i)
-
 
 
 

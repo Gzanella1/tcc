@@ -80,7 +80,7 @@ O problema é que a atualização do valor precisa preservar o restante correto.
         self.assertTrue(resposta_correcao_eh_textual(q))
         self.assertIsNone(validar_questao(q))
 
-    def test_previsao_extrai_vetor_do_enunciado_como_entrada(self):
+    def test_previsao_le_secao_entrada_testes_exportada_pela_geracao(self):
         texto = """
 1 - [PREVISAO] Dado o vetor [2, 3, 4, 5], qual será a saída esperada?
 
@@ -90,6 +90,8 @@ for i in range(4):
     numero = int(input())
     print(numero)
 ----------------------------------------
+
+entradaTestes: "2\\n3\\n4\\n5\\n"
 
 resposta 1 -
 2
@@ -101,6 +103,7 @@ resposta 1 -
         q = self._carregar_texto(texto)[0]
 
         self.assertEqual(q.entradaTestes, "2\n3\n4\n5\n")
+        self.assertEqual(q.resposta_aluno, "2\n3\n4\n5")
         self.assertIsNone(validar_questao(q))
 
     def test_modificacao_separa_codigo_base_e_codigo_aluno(self):
@@ -143,20 +146,25 @@ print(nome)
         self.assertEqual(resultado.status, STATUS_ERRO_ENTRADA)
         self.assertTrue(any("codigo_base" in d for d in resultado.detalhes))
 
-    def test_entrada_ausente_nao_e_erro_para_previsao(self):
-        # Contrato PREVISAO: entradaTestes é OPCIONAL. A entrada pode vir do
-        # enunciado; ausência não configura erro_entrada.
+    def test_entrada_ausente_e_erro_para_previsao(self):
+        # Contrato PREVISAO: entradaTestes é OBRIGATÓRIO e é produzido na
+        # GERAÇÃO (dados_entrada → entradaTestes). A correção nunca deriva a
+        # entrada do enunciado: ausência configura erro_entrada.
         q = Questao(
             idx=1,
             tipo="previsao",
-            enunciado="Se o usuário digitar os números 5, -3, 0 para encerrar, qual será a saída?",
+            enunciado="Dado o vetor [5, -3, 0], qual será a saída?",
             codigo_base="print(int(input()))",
             resposta_aluno="5",
         )
 
-        self.assertIsNone(validar_questao(q))
+        resultado = validar_questao(q)
 
-    def test_previsao_extrai_enumeracao_narrativa_como_entrada(self):
+        self.assertIsNotNone(resultado)
+        self.assertEqual(resultado.status, STATUS_ERRO_ENTRADA)
+        self.assertTrue(any("entradaTestes" in d for d in resultado.detalhes))
+
+    def test_previsao_usa_secao_entrada_testes_da_geracao(self):
         texto = """
 1 - [PREVISAO] Se o usuário digitar os números 5, -3, 0, 1, 0, -1 e
 depois 0 para encerrar, qual será a saída esperada do programa?
@@ -175,6 +183,8 @@ for i in novalista:
     print(i)
 ----------------------------------------
 
+entradaTestes: "5\\n-3\\n0\\n1\\n0\\n-1\\n0\\n"
+
 resposta 1 -
 -3
 5
@@ -183,12 +193,30 @@ resposta 1 -
         q = self._carregar_texto(texto)[0]
 
         self.assertEqual(q.tipo, "previsao")
-        # Os números citados no enunciado viram a entrada da execução.
+        # A entrada vem da seção entradaTestes exportada pela GERAÇÃO — nunca
+        # é deduzida do texto do enunciado no parser.
         self.assertEqual(q.entradaTestes, "5\n-3\n0\n1\n0\n-1\n0\n")
         # A previsão do aluno permanece como resposta_aluno; nunca vira código.
         self.assertEqual(q.resposta_aluno, "-3\n5")
         self.assertEqual(q.codigo_aluno_resposta, "")
         self.assertIsNone(validar_questao(q))
+
+    def test_json_nao_persiste_dados_entrada_em_extras(self):
+        # dados_entrada é campo intermediário da GERAÇÃO: não vira campo
+        # canônico de Questao nem vaza para extras.
+        conteudo = json.dumps([{
+            "tipo": "previsao",
+            "enunciado": "Qual sera a saida?",
+            "codigo_base": "nome = input()\nprint(nome)",
+            "entradaTestes": "Ana\n",
+            "resposta_aluno": "Ana",
+            "dados_entrada": {"nome": "Ana"},
+        }])
+
+        q = self._carregar_texto(conteudo)[0]
+
+        self.assertFalse(hasattr(q, "dados_entrada"))
+        self.assertNotIn("dados_entrada", q.extras)
 
     def test_testes_ausentes_em_codigo_sem_input_sao_inconclusivos(self):
         q = Questao(
@@ -277,6 +305,8 @@ Seu código:
 print(int(input()))
 print(int(input()))
 ----------------------------------------
+
+entradaTestes: "1\\n2\\n"
 
 resposta 2 -
 1

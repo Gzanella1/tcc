@@ -164,7 +164,6 @@ class ContratoGeracaoTests(unittest.TestCase):
         texto = ReportExporter(caminho_saida_tmp())._formatar([(ex, p)])
 
         self.assertIn("Código-base:", texto)
-        self.assertIn("Enunciado original:", texto)
         self.assertIn("print(a + b)", texto)
         self.assertNotIn("Seu código:", texto)
         # cabeçalho compatível com split_exercicios da correção

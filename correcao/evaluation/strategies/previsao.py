@@ -12,25 +12,21 @@ Contrato canônico:
       referência da execução — não é gabarito de código novo e esta
       semântica NÃO se transfere para MODIFICACAO.
     - resposta_aluno : a previsão bruta do aluno.
-    - entradaTestes  : entrada usada na execução de referencia. É OPCIONAL:
-      quando vazia, a entrada é derivada do próprio enunciado
-      (utils.text.extrair_entradas_de_enunciado), por exemplo de enunciados
-      narrativos como "Se o usuário digitar os números 5, -3, 0, ... e
-      depois 0 para encerrar".
+    - entradaTestes  : entrada de execução OBRIGATÓRIA, produzida
+      deterministicamente na GERAÇÃO (dados_entrada → entradaTestes) e
+      validada lá por execução de referência. A correção NUNCA deriva a
+      entrada do enunciado nem conhece o campo intermediário dados_entrada:
+      Questao → entradaTestes → runner → codigo_base → saída → comparação.
 
 Estratégia (em ordem de prioridade):
     1. Tenta extrair pares (entrada → saída prevista) da resposta do aluno,
        pois o aluno frequentemente escreve no formato:
            Entrada: X
            Saída: Y
-    2. Tenta montar pares combinando entradas do enunciado com blocos
-       de saída da resposta do aluno (suporta formato misto).
-       ATENÇÃO: esta estratégia só é tentada quando a resposta NÃO contém
-       marcadores "Entrada:/Saída:" — caso contrário a estratégia 1 deveria
-       ter capturado e a estratégia 2 emparelharia blocos na ordem errada.
-    3. Se não houver pares extraíveis, cai no modo legado: executa o
-       código com q.entradaTestes OU, quando este estiver vazio, com a
-       entrada derivada do enunciado, e compara diretamente.
+       (a entrada aqui é a que o PRÓPRIO aluno declara no caso — não vem do
+       enunciado nem substitui entradaTestes).
+    2. Se não houver pares extraíveis, cai no modo legado: executa o código
+       com q.entradaTestes e compara diretamente.
 
 Nota: os prompts de input() (ex: "Digite uma palavra: ") são removidos
 da saída antes da comparação, pois o aluno prevê apenas o que os
@@ -49,7 +45,6 @@ from models.questao import Questao, Resultado
 from utils.text import (
     comparar_textos,
     extrair_codigo,
-    extrair_entradas_de_enunciado,
     normalizar_texto,
 )
 
@@ -100,92 +95,6 @@ def _extrair_pares_resposta(resposta: str) -> List[Tuple[str, str]]:
                 pares.append((entrada_val, saida_val))
 
     return pares
-
-
-# ─── Extração de entradas do enunciado ───────────────────────────────────────
-
-def _extrair_entradas_enunciado(enunciado: str) -> List[str]:
-    """
-    Extrai entradas mencionadas no enunciado entre aspas simples ou duplas.
-    Ignora strings longas (> 20 chars) ou que terminam com ':', '?' ou espaço,
-    pois provavelmente são prompts do input(), não entradas do usuário.
-
-    Ex: 'Se o usuário digitar "Python"' → ["Python"]
-    """
-    candidatas = re.findall(r'["\']([^"\']+)["\']', enunciado)
-    return [
-        c for c in candidatas
-        if len(c) <= 20 and not c.strip().endswith((":", "?", " "))
-    ]
-
-
-# ─── Extração de blocos de saída da resposta ─────────────────────────────────
-
-def _extrair_blocos_saida_resposta(resposta: str, n_entradas: int = 0) -> List[str]:
-    """
-    Divide a resposta do aluno em blocos de saída, onde cada bloco
-    corresponde a uma execução do programa.
-
-    Suporta três formatos:
-
-    Formato 1 — separado por linha em branco:
-        Invertida: nohtyP
-
-        Entrada: a
-        Invertida: a
-
-    Formato 2 — rótulos "Entrada: X" como delimitadores (sem linha em branco):
-        Invertida: nohtyP
-        Entrada: a
-        Invertida: a
-
-    Formato 3 — uma linha por saída (sem qualquer marcador):
-        Invertida: nohtyP
-        Invertida: a
-    """
-    # Substitui linhas "Entrada: X" por separadores vazios
-    linhas_sem_entrada = []
-    for linha in resposta.splitlines():
-        if re.match(r"(?i)^\s*(?:entrada|input)\s*[:\-–]\s*.+$", linha):
-            linhas_sem_entrada.append("")
-        else:
-            linhas_sem_entrada.append(linha)
-
-    texto_limpo = "\n".join(linhas_sem_entrada)
-
-    # Tenta dividir por blocos separados por linha(s) em branco
-    blocos_brutos = re.split(r"\n{2,}", texto_limpo)
-    blocos = []
-    for bloco in blocos_brutos:
-        linhas = [l.strip() for l in bloco.splitlines() if l.strip()]
-        if linhas:
-            blocos.append("\n".join(linhas))
-
-    # Formato 3: bloco único mas múltiplas entradas → cada linha é um caso
-    if len(blocos) == 1 and n_entradas > 1:
-        linhas_saida = [l.strip() for l in blocos[0].splitlines() if l.strip()]
-        if len(linhas_saida) == n_entradas:
-            return linhas_saida
-
-    return blocos
-
-
-# ─── Montagem de pares enunciado × resposta ──────────────────────────────────
-
-def _montar_pares_enunciado_resposta(
-    enunciado: str, resposta: str
-) -> List[Tuple[str, str]]:
-    """
-    Combina entradas extraídas do enunciado com blocos de saída da resposta.
-    Só pareia se as quantidades baterem exatamente.
-    """
-    entradas = _extrair_entradas_enunciado(enunciado)
-    blocos   = _extrair_blocos_saida_resposta(resposta, n_entradas=len(entradas))
-
-    if entradas and len(entradas) == len(blocos):
-        return list(zip(entradas, blocos))
-
-    return []
 
 
 # ─── Remoção de prompts de input() da saída ──────────────────────────────────
@@ -307,14 +216,11 @@ def _avaliar_modo_legado(q: Questao, codigo_base: str) -> Resultado:
     aluno (comportamento original). Remove prompts de input() antes de
     comparar.
 
-    A entrada usada é q.entradaTestes; quando ela está vazia, é derivada do
-    próprio enunciado (ex.: "Se o usuário digitar os números 5, -3, 0, ...
-    para encerrar"), de modo que um previsão sem entradaTestes declarado
-    ainda consegue ser executada com os dados descritos no texto.
+    A entrada usada é q.entradaTestes (OBRIGATÓRIO no contrato de PREVISAO).
+    A correção nunca deriva a entrada do enunciado nem conhece o campo
+    intermediário dados_entrada da geração.
     """
-    entrada = normalizar_texto(q.entradaTestes) or extrair_entradas_de_enunciado(
-        q.enunciado or "", q.tipo
-    )
+    entrada = normalizar_texto(q.entradaTestes)
     execucao      = executar_codigo_python(codigo_base, entrada, timeout=3)
     prompts_input = _extrair_prompts_input(codigo_base)
     saida_correta = _remover_prompts_saida(
@@ -399,19 +305,6 @@ def avaliar(q: Questao) -> Resultado:
     if pares:
         return _avaliar_com_pares(q, codigo_base, pares)
 
-    # 2. Só tenta montar pares pelo enunciado se a resposta NÃO contiver
-    #    marcadores "Entrada:/Saída:" — caso contrário a estratégia 1 deveria
-    #    ter capturado e a estratégia 2 emparelharia blocos na ordem errada.
-    tem_marcadores = bool(re.search(
-        r"(?i)(?:entrada|input|sa[íi]da|output)\s*[:\-–]", resposta
-    ))
-    if not tem_marcadores:
-        pares_enunciado = _montar_pares_enunciado_resposta(
-            q.enunciado or "", resposta
-        )
-        if pares_enunciado:
-            return _avaliar_com_pares(q, codigo_base, pares_enunciado)
-
-    # 3. Fallback legado
+    # 2. Fallback legado: executa com q.entradaTestes e compara diretamente.
     return _avaliar_modo_legado(q, codigo_base)
 

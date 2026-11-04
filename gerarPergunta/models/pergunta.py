@@ -29,6 +29,13 @@ class Pergunta:
     evidencia_codigo: str | None = None
     resposta_esperada: str | None = None
     rubrica: str | None = None
+    # Campos intermediários do pipeline de GERAÇÃO de PREVISAO. NÃO fazem
+    # parte do contrato da correção (Questao não os expõe): dados_entrada é
+    # o dado semântico retornado pelo LLM e entrada_testes é a string de
+    # stdin obtida por transformação DETERMINÍSTICA de dados_entrada
+    # (services.dados_entrada), validada por execução de referência.
+    dados_entrada: dict | list | None = None
+    entrada_testes: str = ""
 
     def __str__(self):
         return f"[{self.tipo.upper()}] {self.pergunta}"

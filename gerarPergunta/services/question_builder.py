@@ -158,5 +158,24 @@ class QuestionBuilder:
             "específica e pergunte qual será a saída esperada do programa, "
             "incluindo casos de borda se possível.\n\n"
             + self._cabecalho(exercicio)
-            + self._rodape("previsao")
+            + "\nCAMPO 'dados_entrada' (OBRIGATÓRIO para PREVISAO):\n"
+            "'dados_entrada' deve conter, de forma ESTRUTURADA e semântica, "
+            "os dados necessários para executar o código-base com a entrada "
+            "escolhida. NÃO é uma string de stdin — é o dado cru (dict/list). "
+            "O sistema de correção o converte deterministicamente na entrada "
+            "de execução.\n"
+            "Exemplos de formato aceito:\n"
+            '  {"dicionario": {"a": 5, "b": 3, "c": 5}, "valor_busca": "5"}\n'
+            '  {"numeros": [2, 3, 4]}\n'
+            '  ["João", "14:00"]\n'
+            "Garanta consistência entre o código-base, o enunciado e "
+            "'dados_entrada': o enunciado pode explicar os dados, mas "
+            "'dados_entrada' é a fonte estruturada da entrada.\n\n"
+            "Regras obrigatórias:\n"
+            "- Não forneça a resposta\n"
+            "- Não copie o código completo\n"
+            "- Seja claro e objetivo\n\n"
+            "Retorne APENAS um JSON válido, sem texto extra, neste formato:\n"
+            '[{"tipo": "previsao", "pergunta": "<texto da pergunta>", '
+            '"dados_entrada": <objeto JSON com os dados>}]'
         )

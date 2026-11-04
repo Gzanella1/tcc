@@ -5,6 +5,7 @@
 # =============================================================
 
 from pathlib import Path
+import json
 
 from models.exercicio import Exercicio
 from models.pergunta   import Pergunta
@@ -47,7 +48,9 @@ class ReportExporter:
         O bloco "Código-base" é o código anterior do aluno: contexto/apoio
         para a questão gerada. O parser da correção o carrega diretamente em
         Questao.codigo_base; a seção "resposta N -" fica reservada para a
-        resposta futura do aluno.
+        resposta futura do aluno. Para PREVISAO, a linha "entradaTestes: ..."
+        (JSON string em linha única) carrega a entrada de execução gerada
+        deterministicamente na geração e é lida como Questao.entradaTestes.
         """
         linhas = []
 
@@ -69,7 +72,17 @@ class ReportExporter:
             linhas.append(exercicio.codigo_base)
             linhas.append("-" * 40)
             linhas.append("")
-          
+
+            # PREVISAO: a entrada de execução (entradaTestes) é gerada
+            # deterministicamente na geração (dados_entrada → entradaTestes)
+            # e exportada como JSON string em linha única. O parser da
+            # correção a carrega em Questao.entradaTestes.
+            if pergunta.tipo.lower() == "previsao" and pergunta.entrada_testes:
+                linhas.append(
+                    f"entradaTestes: {json.dumps(pergunta.entrada_testes, ensure_ascii=False)}"
+                )
+                linhas.append("")
+
             linhas.append(f"resposta {idx} -")
             linhas.append("")
             linhas.append("")   # espaço extra entre blocos

@@ -27,12 +27,12 @@ O mesmo modelo é usado na geração de perguntas (`gerarPergunta`) e na correç
 
 Fonte: `gerarPergunta/services/question_builder.py` (montagem do prompt) e `gerarPergunta/services/ai_client.py` (envio à LLM, função `_chamar_api_cached`).
 
-**System Prompt comum a todos os tipos de geração** (`ai_client.py:96`):
+**System Prompt comum a todos os tipos de geração** (`ai_client.py:116`):
 ```
 Você é um tutor de programação.
 ```
 
-**Cabecalho e rodapé comuns** (adicionados a cada tipo; `question_builder.py`):
+**Cabecalho e rodapé comuns** (usados por JUSTIFICATIVA, DESCRITIVA e MODIFICAÇÃO; `question_builder.py`). CORREÇÃO e PREVISÃO têm prompts próprios (ver §2.1 e §2.5):
 
 Cabeçalho:
 ```
@@ -58,24 +58,58 @@ Retorne APENAS um JSON válido, sem texto extra:
 
 **Configuração comum da geração:** modelo `qwen/qwen3-vl-4b`; temperature `0.4`; `max_tokens` **não enviado na chamada** (declarado `512` em `settings.py` mas não aplicado).
 
-**Resposta esperada (todos os tipos):** array JSON `[{"tipo": "...", "pergunta": "..."}]`. Utilizada para criar o objeto `Pergunta` (tipo + texto da pergunta), gravado em `perguntasGeradas.txt`. Se a resposta não contiver JSON válido com um item de `pergunta` não vazio, nenhuma pergunta é gerada para aquele slot.
+**Resposta esperada (tipos comuns):** array JSON `[{"tipo": "...", "pergunta": "..."}]`. Utilizada para criar o objeto `Pergunta` (tipo + texto da pergunta), gravado em `perguntasGeradas.txt`. Se a resposta não contiver JSON válido com um item de `pergunta` não vazio, nenhuma pergunta é gerada para aquele slot.
 
-O que muda entre os tipos é apenas o **corpo do User Prompt** (a primeira regra de instrução):
+**PREVISÃO:** o item também deve incluir `"dados_entrada"` (`<objeto JSON>`). Na geração (`ai_client.py:75-86`), `dados_entrada` é transformado deterministicamente em `entradaTestes` pela função `gerar_entrada_testes`; a pergunta é **rejeitada na geração** se o dado não produzir entrada executável (formato desconhecido, entrada vazia, ou código que falha, estoura timeout ou não produz saída).
+
+Para JUSTIFICATIVA, DESCRITIVA e MODIFICAÇÃO, o que muda entre os tipos é apenas o **corpo do User Prompt** (a primeira regra de instrução):
 
 ### 2.1 CORREÇÃO
-**Finalidade:** gerar pergunta que leve o aluno a identificar um erro lógico, sintático ou de borda no código.
+**Finalidade:** gerar pergunta que leve o aluno a corrigir um erro **real e verificável** no código; o prompt exige uma validação rigorosa para nunca inventar um erro.
 
 **User Prompt:**
 ```
-Você é um tutor de programação.
+Você é um tutor de programação especializado em análise rigorosa de código Python.
 
-Gere 1 pergunta do tipo CORREÇÃO que leve o aluno a identificar um possível erro lógico, sintático ou de borda no código.
+Sua tarefa é analisar o código produzido pelo aluno e verificar se existe um erro REAL que possa originar uma pergunta do tipo CORREÇÃO.
 
-<Cabeçalho>
-<Rodapé com tipo=correcao>
+REGRA PRINCIPAL:
+NUNCA invente um erro apenas para gerar uma pergunta.
+Se o código estiver correto, não crie uma falsa afirmação de erro.
+
+COMO ANALISAR O CÓDIGO:
+1. Verifique a sintaxe real do código.
+2. Verifique a lógica e o comportamento do algoritmo.
+3. Verifique condições de borda.
+4. Verifique se os identificadores usados são consistentes dentro do próprio código.
+5. NÃO considere um identificador errado apenas porque poderia ter outro nome.
+6. Por exemplo, se uma variável chamada 'carater' é criada e usada consistentemente como 'carater', isso NÃO é erro. O fato de existir a palavra 'caracter' como outra grafia possível não torna 'carater' incorreto.
+7. NÃO classifique diferenças de nomenclatura, estilo ou preferência pessoal como erro.
+8. Considere formas matemáticas e lógicas equivalentes como corretas.
+9. Só considere algo um erro se puder demonstrar objetivamente, a partir do código, que ele produz comportamento incorreto, erro de execução, erro de sintaxe ou falha em algum caso válido.
+
+VALIDAÇÃO OBRIGATÓRIA:
+Antes de formular a pergunta, tente refutar a hipótese de erro.
+Pergunte a si mesmo: 'Esse trecho realmente está incorreto ou apenas poderia ser escrito de outra maneira?'
+Se estiver correto, NÃO invente um problema.
+
+DADOS PARA ANÁLISE:
+Enunciado original:
+{exercicio.enunciado_original}
+
+Código produzido pelo aluno:
+{exercicio.codigo_base}
+
+CRITÉRIO PARA GERAR A PERGUNTA:
+A pergunta somente pode ser gerada se existir um erro real, verificável e explicável diretamente pelo código.
+
+Retorne APENAS JSON válido neste formato:
+[{"tipo": "correcao", "pergunta": "<pergunta baseada em erro real>"}]
 ```
 
-**Variáveis:** `{tipo}`, `{exercicio.numero}`, `{exercicio.enunciado_original}`, `{exercicio.codigo_base}`.
+**Particularidades:** não usa o cabeçalho/rodapé comuns; os dados são embutidos na seção "DADOS PARA ANÁLISE".
+
+**Variáveis:** `{exercicio.enunciado_original}`, `{exercicio.codigo_base}`.
 
 ### 2.2 JUSTIFICATIVA
 **Finalidade:** gerar pergunta que peça ao aluno para explicar por que escolheu determinada abordagem no código.
@@ -90,7 +124,7 @@ Gere 1 pergunta do tipo JUSTIFICATIVA que peça ao aluno para explicar por que e
 <Rodapé com tipo=justificativa>
 ```
 
-**Variáveis:** idênticas à CORREÇÃO.
+**Variáveis:** `{tipo}`, `{exercicio.numero}`, `{exercicio.enunciado_original}`, `{exercicio.codigo_base}`.
 
 ### 2.3 DESCRITIVA
 **Finalidade:** gerar pergunta que peça ao aluno para descrever, com suas próprias palavras, o que o código faz passo a passo.
@@ -132,12 +166,29 @@ Você é um tutor de programação.
 Gere 1 pergunta do tipo PREVISÃO que apresente uma entrada específica e pergunte qual será a saída esperada do programa, incluindo casos de borda se possível.
 
 <Cabeçalho>
-<Rodapé com tipo=previsao>
+
+CAMPO 'dados_entrada' (OBRIGATÓRIO para PREVISAO):
+'dados_entrada' deve conter, de forma ESTRUTURADA e semântica, os dados necessários para executar o código-base com a entrada escolhida. NÃO é uma string de stdin — é o dado cru (dict/list). O sistema de correção o converte deterministicamente na entrada de execução.
+Exemplos de formato aceito:
+  {"dicionario": {"a": 5, "b": 3, "c": 5}, "valor_busca": "5"}
+  {"numeros": [2, 3, 4]}
+  ["João", "14:00"]
+Garanta consistência entre o código-base, o enunciado e 'dados_entrada': o enunciado pode explicar os dados, mas 'dados_entrada' é a fonte estruturada da entrada.
+
+Regras obrigatórias:
+- Não forneça a resposta
+- Não copie o código completo
+- Seja claro e objetivo
+
+Retorne APENAS um JSON válido, sem texto extra, neste formato:
+[{"tipo": "previsao", "pergunta": "<texto da pergunta>", "dados_entrada": <objeto JSON com os dados>}]
 ```
 
-**Variáveis:** idênticas.
+**Particularidades:** usa o cabeçalho comum, porém rodapé próprio com o campo obrigatório `dados_entrada`.
 
-> **Comparação entre geração de tipos:** os cinco prompts são estruturalmente idênticos (mesmo system prompt, mesmo cabeçalho, mesmo rodapé e mesmo formato de resposta). A única diferença é a **instrução central** que define o objetivo pedagógico do tipo. As variáveis fornecidas à LLM são as mesmas em todos os casos: enunciado original e código-base do aluno.
+**Variáveis:** `{exercicio.numero}`, `{exercicio.enunciado_original}`, `{exercicio.codigo_base}`.
+
+> **Comparação entre geração de tipos:** JUSTIFICATIVA, DESCRITIVA e MODIFICAÇÃO são estruturalmente idênticos (mesmo system prompt, mesmo cabeçalho, mesmo rodapé e mesmo formato de resposta), diferenciando-se apenas na **instrução central**. **CORREÇÃO** e **PREVISÃO** têm prompts especializados: CORREÇÃO exige análise rigorosa para só gerar pergunta a partir de um erro real e verificável; PREVISÃO mantém o cabeçalho comum, mas obriga o campo estruturado `dados_entrada`. As variáveis fornecidas à LLM são, em todos os casos, o enunciado original e o código-base do aluno.
 
 ---
 
@@ -166,18 +217,38 @@ Você é um corretor de respostas textuais de programação.
 Enunciado:
 {q.enunciado}
 
+Código-base:
+{q.codigo_base or "(não fornecido)"}
+
+Evidência objetiva de execução do código-base:
+{saida_real or "(não disponível)"}
+
 Resposta do aluno:
 {q.resposta_aluno or "(vazia)"}
 
 Regras de correção:
-- Priorize o CONCEITO, não a gramática.
-- Se a ideia principal estiver correta, a nota deve ser alta.
-- Erros de português ou frase confusa não devem derrubar muito a nota.
-- Se a resposta estiver parcialmente correta, dê nota intermediária.
-- Se estiver errada conceitualmente, dê nota baixa.
-- Não seja rígido demais com a forma.
+- Avalie a resposta com base na correção técnica.
+- Priorize o conceito, não a gramática.
+- Não assuma que as afirmações presentes no enunciado são necessariamente verdadeiras.
+- Analise tecnicamente o código-base antes de avaliar a resposta.
+- Se o enunciado afirmar que existe um erro, verifique se esse erro realmente existe.
+- Se o aluno contestar a premissa do enunciado, verifique se a contestação é tecnicamente correta.
+- Se o aluno demonstrar corretamente que o suposto erro não existe, considere isso um acerto.
+- Não penalize o aluno simplesmente por discordar do enunciado.
+- A evidência de execução é um dado observado diretamente do código-base.
+- Use a evidência de execução como apoio à análise.
+- Não conclua que um algoritmo está correto ou incorreto apenas com base em uma única execução.
+- Se houver conflito entre a premissa do enunciado e a análise técnica do código, priorize a análise técnica.
 
-Avalie estes itens:
+Antes de determinar a nota:
+1. Identifique o conceito técnico avaliado.
+2. Verifique se o suposto erro realmente existe no código-base.
+3. Determine se o código implementa corretamente o conceito.
+4. Avalie a resposta do aluno.
+5. Caso o aluno conteste o enunciado, verifique se a contestação é tecnicamente válida.
+6. Só então determine a nota.
+
+Avalie:
 1. entendimento do conceito
 2. completude
 3. clareza
@@ -192,6 +263,8 @@ Retorne APENAS JSON válido neste formato:
 }
 ```
 
+**Particularidades:** o prompt fornece também o **código-base** e a **evidência objetiva de execução do código-base** (`saida_real`), e orienta a correção pela técnica: o corretor deve verificar se o erro apontado pelo enunciado realmente existe, priorizar a análise técnica sobre a premissa do enunciado e considerar contestação tecnicamente correta como acerto.
+
 **Variáveis do prompt:**
 
 ```text
@@ -200,6 +273,12 @@ PROMPT
 Enunciado:
 {q.enunciado}
 
+Código-base:
+{q.codigo_base or "(não fornecido)"}
+
+Evidência objetiva de execução do código-base:
+{saida_real or "(não disponível)"}
+
 Resposta do aluno:
 {q.resposta_aluno or "(vazia)"}
 ```
@@ -207,6 +286,8 @@ Resposta do aluno:
 | Variável | Origem | Conteúdo |
 | --- | --- | --- |
 | `q.enunciado` | Questão | Enunciado da questão |
+| `q.codigo_base` | Questão | Código anterior do aluno (exibido como `(não fornecido)` se ausente) |
+| `saida_real` | Questão (`q.extras["saida_real_codigo_base"]`) | Saída real observada da execução do código-base (exibida como `(não disponível)` se ausente) |
 | `q.resposta_aluno` | Questão | Resposta textual enviada pelo aluno (exibida como `(vazia)` se ausente) |
 
 **Parâmetros:** temperature `0.15`; max_tokens `900`.
@@ -304,7 +385,7 @@ Retorne APENAS JSON válido neste formato:
 | Variável | Origem | Conteúdo |
 | --- | --- | --- |
 | `q.enunciado` | Questão | Enunciado (fonte dos requisitos) |
-| `precisa_saida` | o enio derivado do enunciado (`exige_saida_no_enunciado`) | `"SIM"` ou `"NÃO"` indicando se o enunciado pede saída/retorno explícito |
+| `precisa_saida` | derivado do enunciado (`exige_saida_no_enunciado`) | `"SIM"` ou `"NÃO"` indicando se o enunciado pede saída/retorno explícito |
 | `q.codigo_base` | Questão | Código anterior do aluno (contexto; não gabarito) |
 | `codigo_aluno_resposta` | Questão | Código atual do aluno, objeto da avaliação |
 
@@ -345,13 +426,16 @@ IMPORTANTE:
 {regra_input}
 - A saída deve refletir o comportamento correto do programa conforme o ENUNCIADO
 - O ENUNCIADO é a fonte PRIMÁRIA para determinar o comportamento esperado
+- Se o enunciado pedir uma funcionalidade nova (modificação), teste o programa FINAL como descrito no enunciado
+- Se o enunciado pedir saída adicional, ela deve aparecer na saída esperada
 - NÃO use o código-base para definir a saída esperada — ele é apenas contexto para entender o problema original
 - Não invente comportamento fora do enunciado
+- Respeite rigorosamente o funcionamento real esperado
 
 Enunciado (fonte dos requisitos):
 {q.enunciado}
 
-Código-base (código ANTERIOR do aluno — apenas contexto; NÃO é gabarito e NÃO define a saída esperada):
+Código-base (código ANTERIOR do aluno — apenas contexto para entender o problema original; NÃO é gabarito e NÃO define a saída esperada):
 {q.codigo_base or "(não fornecido)"}
 
 _INTERFACE_ATUAL_ (interface implementada — define quantos inputs e em que ordem; NÃO define a saída esperada):
@@ -365,7 +449,7 @@ Formato obrigatório (JSON puro):
     {
       "entrada": "",
       "valores_entrada": [
-        {"indice": 1, "variavel": "...", "prompt": "...", "valor": "..."}
+        {"indice": 1, "variavel": "nome_da_variavel", "prompt": "prompt literal se houver", "valor": "valor digitado"}
       ],
       "saida": "saida esperada\n",
       "obs": "descrição do caso"
@@ -384,11 +468,11 @@ REGRAS:
 | Variável | Origem | Conteúdo |
 | --- | --- | --- |
 | `q.tipo` | Questão | Tipo da questão (ex.: correcao, modificacao) |
-| `regra_input` | derivado do código | orientação sobre `input()`: "gere valores realistas para cada input()" ou "o código NÃO usa input(), não gere entradas" |
+| `regra_input` | derivado do código | orientação sobre `input()`, em 3 casos: interface **dinâmica** em laço / "o código usa input(), então gere valores realistas para cada input()" / "o código NÃO usa input(), então NÃO gere entradas" |
 | `q.enunciado` | Questão | Enunciado (fonte dos requisitos) |
 | `q.codigo_base` | Questão | Código anterior do aluno (contexto) |
 | `interface` | derivado do código | interface atual (quantos/ordem dos inputs) |
-| `regra_entrada` | derivado | regras da chave `entrada`/`valores_entrada` (ordem montada pelo sistema) |
+| `regra_entrada` | derivado | regras da chave `entrada`/`valores_entrada` conforme o caso: laço (stdin completo na `entrada`, sem `valores_entrada`) / assinatura fixa (`valores_entrada`, com a ordem montada pelo Python) / sem input (`entrada` = `""`) |
 | `quantidade` | constante | `TESTES_ALVO` = 6 |
 
 **Parâmetros:** temperature `0.1`; max_tokens `1200`.
@@ -410,7 +494,8 @@ REGRAS:
 | `{q.enunciado}` | Correção textual, modificação, testes | Questão | Enunciado da questão |
 | `{q.resposta_aluno}` | Correção textual | Questão | Resposta textual enviada pelo aluno |
 | `{precisa_saida}` | Correção (modificação) | derivado do enunciado | `SIM`/`NÃO` — se o enunciado pede saída/retorno |
-| `{q.codigo_base}` | Correção (modificação), testes | Questão | Código anterior do aluno (contexto) |
+| `{q.codigo_base}` | Correção textual, correção (modificação), testes | Questão | Código anterior do aluno (contexto) |
+| `{saida_real}` | Correção textual | Questão (`q.extras["saida_real_codigo_base"]`) | Saída real observada do código-base (evidência objetiva de apoio) |
 | `{codigo_aluno_resposta}` | Correção (modificação) | Questão | Código atual do aluno (objeto da avaliação) |
 | `{q.tipo}` | Testes | Questão | Tipo da questão |
 | `{regra_input}` | Testes | derivado do código | orientação sobre `input()` |
@@ -418,7 +503,7 @@ REGRAS:
 | `{regra_entrada}` | Testes | derivado | regras da chave `entrada`/`valores_entrada` |
 | `{quantidade}` | Testes | constante | número de testes solicitado (6) |
 
-**Informações do estudante fornecidas à LLM:** na geração, o **código anterior do aluno** e o **enunciado original**; na correção textual, o **enunciado** e a **resposta (texto) do aluno**; na correção de modificação, o **enunciado**, o **código base** e o **código atual do aluno**; na geração de testes, o **enunciado**, o **código base** e a **interface**.
+**Informações do estudante fornecidas à LLM:** na geração, o **código anterior do aluno** e o **enunciado original**; na correção textual, o **enunciado**, o **código-base**, a **evidência objetiva de execução** e a **resposta (texto) do aluno**; na correção de modificação, o **enunciado**, o **código base** e o **código atual do aluno**; na geração de testes, o **enunciado**, o **código base** e a **interface**.
 
 ---
 
@@ -428,17 +513,17 @@ Tabela comparativa principal:
 
 | Tipo | Etapa | Modelo | Prompt | Variáveis principais | Temperature | Max Tokens | Saída |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Correção | Geração | `qwen/qwen3-vl-4b` | LLM-01 (correção) | `tipo`, enunciado, código-base | 0.4 | — | array JSON `[{"tipo","pergunta"}]` |
+| Correção | Geração | `qwen/qwen3-vl-4b` | LLM-01 (correção) | `enunciado`, código-base | 0.4 | — | array JSON `[{"tipo","pergunta"}]` |
 | Justificativa | Geração | `qwen/qwen3-vl-4b` | LLM-01 (justificativa) | `tipo`, enunciado, código-base | 0.4 | — | array JSON |
 | Descritiva | Geração | `qwen/qwen3-vl-4b` | LLM-01 (descritiva) | `tipo`, enunciado, código-base | 0.4 | — | array JSON |
 | Modificação | Geração | `qwen/qwen3-vl-4b` | LLM-01 (modificação) | `tipo`, enunciado, código-base | 0.4 | — | array JSON |
-| Previsão | Geração | `qwen/qwen3-vl-4b` | LLM-01 (previsão) | `tipo`, enunciado, código-base | 0.4 | — | array JSON |
-| Correção textual | Correção | `qwen/qwen3-vl-4b` | LLM-02 (compartilhado: descritiva/justificativa/correção textual) | `enunciado`, `resposta_aluno` | 0.15 | 900 | objeto JSON `{nota,status,feedback,acertos,melhorias}` |
+| Previsão | Geração | `qwen/qwen3-vl-4b` | LLM-01 (previsão) | `tipo`, enunciado, código-base | 0.4 | — | array JSON `[{"tipo","pergunta","dados_entrada"}]` |
+| Correção textual | Correção | `qwen/qwen3-vl-4b` | LLM-02 (compartilhado: descritiva/justificativa/correção textual) | `enunciado`, `codigo_base`, `saida_real`, `resposta_aluno` | 0.15 | 900 | objeto JSON `{nota,status,feedback,acertos,melhorias}` |
 | Modificação | Correção | `qwen/qwen3-vl-4b` | LLM-03 (requisitos) | `enunciado`, `precisa_saida`, `codigo_base`, `codigo_aluno_resposta` | 0.15 | 1200 | objeto JSON `{nota,status,requisitos...,feedback}` |
 | Geração de testes | Testes | `qwen/qwen3-vl-4b` | LLM-04 | `tipo`, `enunciado`, `codigo_base`, `interface`, `regra_input`, `regra_entrada`, `quantidade` | 0.1 | 1200 | objeto JSON `{testes:[...]}` |
 
 **Principais diferenças:**
-- **Geração** usa temperature 0.4 e não envia `max_tokens`; todos os tipos compartilham system prompt, cabeçalho, rodapé e formato, diferenciando-se apenas na instrução central.
+- **Geração** usa temperature 0.4 e não envia `max_tokens`; JUSTIFICATIVA, DESCRITIVA e MODIFICAÇÃO compartilham system prompt, cabeçalho, rodapé e formato, diferenciando-se apenas na instrução central. CORREÇÃO e PREVISÃO têm prompts especializados (CORREÇÃO: análise rigorosa que só gera pergunta a partir de erro real; PREVISÃO: inclui o campo `dados_entrada`, convertido deterministicamente em `entradaTestes`).
 - **Correção textual** e **modificação** usam temperature 0.15, porém com `max_tokens` distintos (900 vs 1200) e prompts, variáveis e formatos de saída completamente diferentes (nota/feedback de texto vs. requisitos/nota de código).
 - A **geração de testes** usa a menor temperatura (0.1) e o formato `{testes:[...]}`.
 - O **mesmo modelo** é usado em todas as etapas; o que muda é a tarefa, o prompt, as variáveis de entrada e o formato de saída.
@@ -475,221 +560,3 @@ Tabela comparativa principal:
 ---
 
 
-
-
-
-# Exercícios Gerados com Base nas Respostas do Aluno
-
----
-
-## Exercício 1 — PREVISÃO
-
-**Exercício gerado com base na resposta da questão 1**
-
-### Questão
-
-**[PREVISAO]** Qual será a saída do programa para a entrada `"abc"`?
-E como seria a saída para a entrada `"aabb"`? Considere casos de borda como strings vazias ou com apenas um caractere.
-
-### Código-base
-
-```python
-def verifica_palavra(s):
-    conjuntos = set()
-    for carater in s:
-        conjuntos.add(carater)
-    if len(conjuntos) == len(s):
-        return True
-    return False
-
-def main():
-    s = input("digite uma palavra: ")
-    print(verifica_palavra(s))
-
-main()
-```
-
-### Resposta 1
-
-```text
-True
-False
-```
-
----
-
-## Exercício 2 — JUSTIFICATIVA
-
-**Exercício gerado com base na resposta da questão 2**
-
-### Questão
-
-**[JUSTIFICATIVA]** Explique por que a abordagem utilizada para calcular a diferença simétrica entre dois conjuntos é eficiente e correta, mesmo que envolva operações como `union`, `intersection` e `difference`.
-
-### Código-base
-
-```python
-def diferenca_simetrica(m, n):
-    c1 = m.union(n)
-    c2 = m.intersection(n)
-
-    return c1.difference(c2)
-
-def main():
-    m = {1, 2, 3, 4, 5, 6}
-    n = {1, 2, 7, 8, 9, 10}
-    print(diferenca_simetrica(m, n))
-
-main()
-```
-
-### Resposta 2
-
-> É eficiente pq ela faz o trabalho de forma mais rapida para ver quais itens tem em uma das lista que n tem na outra sem tem que ficar fazendo varios codigos brutos no meio da fução.
-
----
-
-## Exercício 3 — MODIFICAÇÃO
-
-**Exercício gerado com base na resposta da questão 3**
-
-### Questão
-
-**[MODIFICACAO]** Adicione uma nova funcionalidade à função `buscaReversa`: em vez de buscar chaves por valor, ela deve buscar valores por chave. Ou seja, dada uma chave, devolve o valor associado. Como você faria essa modificação?
-
-### Código-base
-
-```python
-
-def busca_por_valores(d1,n):
-    lista=[]
-    for x, y in d1.items():
-        if y==n:
-            lista.append(x)
-
-    return(lista)
-
-
-def main():
-    d1={}
-    while True:
-        chave=input("digite uma chave: ")
-        if chave =="":
-            break
-        valor=(input("digite um valor: "))
-        d1[chave]=valor
-    n=input("digite o valor para buscar as chaves: ")
-    chaves=busca_por_valores(d1,n)
-    print(chaves)
-
-main()
-
-def busca_por_chave(d1, chave):
-    return d1.get(chave)
-
-
-def main():
-    d1 = {}
-    while True:
-        chave = input("Digite uma chave: ")
-        if chave == "":
-            break
-        valor = input("Digite um valor: ")
-        d1[chave] = valor
-
-    chave = input("Digite a chave para buscar o valor: ")
-    valor = busca_por_chave(d1, chave)
-    print(valor)
-
-
-main()
-```
-
-### Resposta 3
-
-
-```python
-
-def busca_por_chave(d1, chave):
-    return d1.get(chave)
-
-
-def main():
-    d1 = {}
-    while True:
-        chave = input("Digite uma chave: ")
-        if chave == "":
-            break
-        valor = input("Digite um valor: ")
-        d1[chave] = valor
-
-    chave = input("Digite a chave para buscar o valor: ")
-    valor = busca_por_chave(d1, chave)
-    print(valor)
-
-
-main()
-```
----
-
-## Exercício 4 — DESCRITIVA
-
-**Exercício gerado com base na resposta da questão 4**
-
-### Questão
-
-**[DESCRITIVA]** Descreva, com suas próprias palavras, o que o código faz passo a passo, explicando cada parte do programa e como os números são processados até o final.
-
-### Código-base
-
-```python
-lista = []
-
-while True:
-    n = int(input("digite um numero:"))
-    if n == 0:
-        break
-    else:
-        lista.append(n)
-
-novalista = sorted(lista)
-
-for i in novalista:
-    print(i)
-```
-
-### Resposta 4
-
-> esta em um loop infinito que pede um numero e se ele for zero para o programa se ele for outro numero adiciona na lista. Apos o loop acabar ele sorteia os numeros de forma aleatoria e salva em uma lista depois imprime os numeros aleatorios da nova lista na tela.
-
----
-
-## Exercício 5 — CORREÇÃO
-
-**Exercício gerado com base na resposta da questão 5**
-
-### Questão
-
-**[CORRECAO]** O código lê números inteiros até que o usuário digite `0`, mas o número `0` é usado como condição de parada. O que acontece se o usuário digitar `0` no primeiro número? O programa continua ou para corretamente?
-
-### Código-base
-
-```python
-lista = []
-
-while True:
-    n = int(input("digite um numero:"))
-    if n == 0:
-        break
-    else:
-        lista.append(n)
-
-lista.sort(reverse=True)
-
-for i in lista:
-    print(i)
-```
-
-### Resposta 5
-
-> o programa para corretamente
