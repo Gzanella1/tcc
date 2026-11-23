@@ -108,6 +108,9 @@ REGRAS IMPORTANTES
   NÃO define o comportamento esperado e NÃO deve ser corrigido.
   A avaliação é sobre o CÓDIGO ATUAL do aluno frente ao enunciado.
 - NÃO invente comportamento que não existe no código.
+- Exemplos numéricos presentes no enunciado podem conter ERROS de cálculo.
+  Avalie pelo requisito descrito em palavras; se um exemplo contradisser
+  o requisito, ignore o exemplo e NÃO penalize o aluno por divergir dele.
 - NÃO avalie estilo, nome de variável ou formatação.
 - Foque APENAS no que o enunciado pede.
 - Se o enunciado NÃO pede print/return:

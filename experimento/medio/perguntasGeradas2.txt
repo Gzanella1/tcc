@@ -1,0 +1,170 @@
+============================================================
+Exercício gerado com base na sua resposta da questão 1
+============================================================
+
+1 - [MODIFICACAO] Agora, modifique a função para que também considere palavras que estão em maiúsculo ou minúsculo como iguais (ou seja, transforme todas as palavras em minúsculas antes de contar).
+
+Código-base:
+----------------------------------------
+def contar_palavras(frase):
+    contagem = {}
+    for palavra in frase.split(' '):
+        if palavra in contagem:
+            contagem[palavra] += 1
+        else:
+            contagem[palavra] = 1
+    return contagem
+p
+
+if __name__ == "__main__":
+    frase = input()
+    print(contar_palavras(frase))
+----------------------------------------
+
+resposta 1 -
+
+----------------------------------------
+
+def contar_palavras(frase):
+    contagem = {}
+    for palavra in frase.split(' '):
+        # normaliza a capitalização (ex.: "O" no início da frase vira "o")
+        if palavra:
+            palavra = palavra[0].lower() + palavra[1:]
+        if palavra in contagem:
+            contagem[palavra] += 1
+        else:
+            contagem[palavra] = 1
+    return contagem
+
+
+if __name__ == "__main__":
+    frase = input()
+    print(contar_palavras(frase))
+----------------------------------------
+
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 2
+============================================================
+
+2 - [DESCRITIVA] Descreva, com suas próprias palavras, passo a passo, o que o código faz para encontrar os elementos comuns entre duas listas de números inteiros, utilizando conjuntos.
+
+Código-base:
+----------------------------------------
+def elementos_comuns(lista1, lista2):
+    comuns = set(lista1) & set(lista2)
+    return list(comuns)
+
+
+if __name__ == "__main__":
+    lista1 = [int(x) for x in input().split()]
+    lista2 = [int(x) for x in input().split()]
+    print(elementos_comuns(lista1, lista2))
+----------------------------------------
+
+resposta 2 -
+
+Primeiro, a função transforma lista1 e lista2 em conjuntos com set(). Isso elimina os valores repetidos de cada lista. Depois, o operador & faz a interseção e mantém só os números que aparecem nas duas. Por fim, list() converte o conjunto de volta em lista. Os elementos ficam na mesma ordem em que aparecem na lista1, porque a interseção percorre o primeiro conjunto e guarda os elementos que também estão no segundo. Por exemplo, com 1 2 3 4 e 3 4 5, o resultado é [3, 4].
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 3
+============================================================
+
+3 - [PREVISAO] Dada a lista [4, 9, 2, 7], qual será o valor retornado pela função segundo_maior?
+
+Código-base:
+----------------------------------------
+def segundo_maior(lista):
+    maior = float('-inf')
+    segundo = float('-inf')
+    for x in lista:
+        if x > maior:
+            segundo = maior
+            maior = x
+        elif x > segundo:
+            segundo = x
+    if segundo == float('-inf'):
+        return None
+    return segundo
+
+
+if __name__ == "__main__":
+    lista = [int(x) for x in input().split()]
+    print(segundo_maior(lista))
+----------------------------------------
+
+entradaTestes: "4 9 2 7\n"
+
+resposta 3 -
+
+7
+
+============================================================
+Exercício gerado com base na sua resposta da questão 4
+============================================================
+
+4 - [CORRECAO] O código apresenta um erro real? Se sim, explique qual é e por que ele ocorre. 
+Se não, justifique por que o código está correto.
+
+Código-base:
+----------------------------------------
+def transposta(matriz):
+    n = len(matriz)
+    return [[matriz[j][i] for j in range(n)] for i in range(n)]
+
+
+if __name__ == "__main__":
+    linhas = int(input())
+    matriz = [[int(x) for x in input().split()] for _ in range(linhas)]
+    print(transposta(matriz))
+----------------------------------------
+
+resposta 4 -
+
+----------------------------------------
+def transposta(matriz):
+    linhas = len(matriz)
+    colunas = len(matriz[0])
+    return [[matriz[j][i] for j in range(linhas)] for i in range(colunas)]
+
+
+if __name__ == "__main__":
+    linhas = int(input())
+    matriz = [[int(x) for x in input().split()] for _ in range(linhas)]
+    print(transposta(matriz))
+----------------------------------------~
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 5
+============================================================
+
+5 - [JUSTIFICATIVA] Por que a abordagem escolhida calcula a média como a média entre a nota máxima e a nota mínima, em vez de calcular a média aritmética das notas?
+
+Código-base:
+----------------------------------------
+def media_por_aluno(notas_por_aluno):
+    medias = {}
+    for aluno, notas in notas_por_aluno.items():
+        medias[aluno] = (max(notas) + min(notas)) / 2
+    return medias
+
+
+if __name__ == "__main__":
+    n = int(input())
+    dados = {}
+    for _ in range(n):
+        partes = input().split()
+        dados[partes[0]] = [float(x) for x in partes[1:]]
+    print(media_por_aluno(dados))
+----------------------------------------
+
+resposta 5 -
+
+A média é sempre um valor entre a menor e a maior nota. Por isso, o ponto médio entre max e min representa o centro das notas. Para notas como 6 7 8 ou 5 9, o resultado é igual ao da média aritmética. A abordagem também tem duas vantagens:
+
+É mais eficiente: não precisa somar todas as notas, só usa os extremos.
+É menos sensível a notas atípicas: as notas intermediárias não puxam o resultado.

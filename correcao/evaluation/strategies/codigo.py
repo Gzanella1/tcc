@@ -45,6 +45,7 @@ from utils.text import (
     extrair_prompts_input,
     normalizar_texto,
     remover_prompts_saida,
+    saidas_equivalentes_ignorando_formato,
     saida_contem_esperado,
 )
 
@@ -228,6 +229,8 @@ def avaliar(
                 ok, motivo = False, motivo_exec
         elif sim >= LIMIAR_APROX:
             ok, motivo = True, "ok"
+        elif saidas_equivalentes_ignorando_formato(saida_obtida, saida_esperada_norm):
+            ok, motivo = True, "ok (mesmos valores, formato diferente)"
         elif contem_esperado:
             ok, motivo = True, "saída esperada presente; há saída extra"
         else:

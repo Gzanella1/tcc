@@ -1,0 +1,293 @@
+CORREÇÃO AUTOMÁTICA
+Data: 08/11/2026 20:00:39
+Total de questões: 5
+Média geral: 5.10/10
+Questões com nota >= 7.0: 2
+========================================================================
+
+EXERCÍCIO 1
+Tipo: previsao
+Nota: 6.67/10
+Status: erro
+Feedback: Resposta incorreta para a saída esperada.
+
+Enunciado:
+Qual será a saída esperada da função calcular_media para a
+entrada [7.0, 8.5, 6.0, 10.0],
+considerando que a função retorna a
+média aritmética das notas e 0 se a lista estiver vazia?
+
+Saída calculada:
+7.875
+
+Detalhes:
+- Saída correta calculada a partir do código-base.
+- Similaridade com a resposta do aluno: 0.667
+
+Evidências:
+- [execucao] Saída do código-base comparada diretamente com a resposta do aluno (similaridade=0.667).
+    modo: legado
+    similaridade: 0.667
+    referencia: testes_executados
+
+Testes executados:
+- Teste 1: FALHOU
+  Entrada:
+    7.0
+    8.5
+    6.0
+    10.0
+  Saída esperada:
+    7.875
+  Resposta do aluno:
+    7.88
+  Motivo: saída diferente
+
+========================================================================
+
+EXERCÍCIO 2
+Tipo: modificacao
+Nota: 8.83/10
+Status: parcial
+Feedback: A função atende ao requisito de retornar tanto a contagem quanto a lista dos pares, mantendo a ordem e os valores corretos.
+
+Enunciado:
+Modifique a função para que ela também retorne uma lista contendo os
+próprios números pares encontrados na lista de entrada, mantendo a contagem de pares.
+
+Detalhes:
+- Teste 1: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 2: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 3: PASSOU (similaridade=0.903, motivo=ok)
+- Teste 4: FALHOU (similaridade=0.833, motivo=saída diferente)
+- Teste 5: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 6: PASSOU (similaridade=0.939, motivo=ok)
+- Requisitos atendidos: A função retorna uma tupla com a quantidade de pares e a lista dos pares encontrados.
+- Nota composta: 70% execução de testes + 30% avaliação via LLM.
+
+Evidências:
+- [execucao | peso 0.7] 5/6 casos de teste compatíveis passaram de 6 válidos (6 total, 0 incompatíveis).
+    modo: com_testes
+    testes_total: 6
+    testes_validos: 6
+    testes_passaram: 5
+    testes_reprovados: 1
+    testes_incompativeis: 0
+    testes_por_origem: {'enunciado': 0, 'llm': 6}
+    referencia: testes_executados
+- [llm | peso 0.3] Verificação dos requisitos do enunciado via LLM (nota 10.00, status 'ok').
+    nota: 10.0
+    status: ok
+    requisitos_identificados: A função deve retornar uma lista contendo os próprios números pares encontrados na lista de entrada, mantendo a contagem de pares.
+    requisitos_atendidos: A função retorna uma tupla com a quantidade de pares e a lista dos pares encontrados.
+    faltantes: (vazia)
+
+Testes executados:
+- Teste 1: PASSOU
+  Obs: Lista com números pares e contagem correta
+  Entrada:
+    1 2 3 4 5 6
+  Saída esperada:
+    3
+    [2, 4, 6]
+  Saída obtida:
+    3
+    [2, 4, 6]
+  Motivo: ok
+- Teste 2: PASSOU
+  Obs: Nenhum par encontrado
+  Entrada:
+    1 3 5
+  Saída esperada:
+    0
+    []
+  Saída obtida:
+    0
+    []
+  Motivo: ok
+- Teste 3: PASSOU
+  Obs: Inclui zero como par e todos os pares
+  Entrada:
+    0 2 4 6 8
+  Saída esperada:
+    4
+    [0, 2, 4, 6, 8]
+  Saída obtida:
+    4
+    [2, 4, 6, 8]
+  Motivo: ok
+- Teste 4: FALHOU
+  Obs: Contagem e lista de pares corretos, ignorando ímpares
+  Entrada:
+    10 11 12 13 14
+  Saída esperada:
+    2
+    [10, 12, 14]
+  Saída obtida:
+    2
+    [12, 14]
+  Motivo: saída diferente
+- Teste 5: PASSOU
+  Obs: Nenhum par, todos ímpares
+  Entrada:
+    7 7 7 7
+  Saída esperada:
+    0
+    []
+  Saída obtida:
+    0
+    []
+  Motivo: ok
+- Teste 6: PASSOU
+  Obs: Lista completa de pares e contagem exata
+  Entrada:
+    2 4 6 8 10 12 14
+  Saída esperada:
+    6
+    [2, 4, 6, 8, 10, 12, 14]
+  Saída obtida:
+    6
+    [4, 6, 8, 10, 12, 14]
+  Motivo: ok
+
+========================================================================
+
+EXERCÍCIO 3
+Tipo: descritiva
+Nota: 10.00/10
+Status: ok
+Feedback: A resposta é técnica, clara e completa.
+
+Enunciado:
+Descreva, com suas próprias palavras, como o código funciona passo a passo para encontrar o maior entre três números inteiros, sem usar a função max.
+
+Detalhes:
+- Acertos: Descreve corretamente o fluxo lógico do código: comparação entre os três números usando condicionais.
+
+Evidências:
+- [llm] Avaliação via LLM (nota original 10.00).
+    nota_original: 10.0
+    status: ok
+    acertos: Descreve corretamente o fluxo lógico do código: comparação entre os três números usando condicionais.
+    melhorias: (vazia)
+    piso_aplicado: não
+
+========================================================================
+
+EXERCÍCIO 4
+Tipo: justificativa
+Nota: 0.00/10
+Status: erro
+Feedback: Resposta incorreta e não técnica.
+
+Enunciado:
+Por que você escolheu usar um laço while para calcular o fatorial, em vez de um laço for ou recursão? Explique sua escolha.
+
+Detalhes:
+- Melhorias: Explique que o laço while é adequado para contadores numéricos, como no cálculo de fatorial, e que o for também pode ser usado, mas não é obrigatório.; Corrija a afirmação de que 'for só funciona pra percorrer listas e strings' — isso é falso; for pode ser usado com números também.; Explique que a recursão é uma técnica válida e que o código pode ser reescrito recursivamente, mesmo que o aluno ainda não saiba fazer.
+
+Evidências:
+- [llm] Avaliação via LLM (nota original 0.00).
+    nota_original: 0.0
+    status: erro
+    acertos: (vazia)
+    melhorias: Explique que o laço while é adequado para contadores numéricos, como no cálculo de fatorial, e que o for também pode ser usado, mas não é obrigatório., Corrija a afirmação de que 'for só funciona pra percorrer listas e strings' — isso é falso; for pode ser usado com números também., Explique que a recursão é uma técnica válida e que o código pode ser reescrito recursivamente, mesmo que o aluno ainda não saiba fazer.
+    piso_aplicado: não
+
+========================================================================
+
+CORREÇÃO AUTOMÁTICA
+Data: 08/11/2026 20:51:59
+Total de questões: 1
+Média geral: 3.33/10
+Questões com nota >= 7.0: 0
+========================================================================
+
+EXERCÍCIO 1
+Tipo: correcao
+Nota: 3.33/10
+Status: erro
+Feedback: Apenas 2/6 testes compatíveis passaram.
+
+Enunciado:
+O código apresenta um erro sintático na linha do laço for.
+A sintaxe correta é 'for letra in texto:',
+mas o código tem um erro de pontuação: falta o ':' no final da linha.
+Isso causará um erro de sintaxe na execução do programa.
+
+Detalhes:
+- Teste 1: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 2: FALHOU (similaridade=0.000, motivo=saída diferente)
+- Teste 3: FALHOU (similaridade=0.000, motivo=saída diferente)
+- Teste 4: FALHOU (similaridade=0.000, motivo=saída diferente)
+- Teste 5: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 6: FALHOU (similaridade=0.000, motivo=saída diferente)
+
+Evidências:
+- [execucao] 2/6 casos de teste compatíveis passaram de 6 válidos (6 total, 0 incompatíveis).
+    modo: com_testes
+    testes_total: 6
+    testes_validos: 6
+    testes_passaram: 2
+    testes_reprovados: 4
+    testes_incompativeis: 0
+    testes_por_origem: {'enunciado': 0, 'llm': 6}
+    referencia: testes_executados
+
+Testes executados:
+- Teste 1: PASSOU
+  Obs: Contagem de vogais em 'Banana' (a, a, a) — deve retornar 3.
+  Entrada:
+    Banana
+  Saída esperada:
+    3
+  Saída obtida:
+    3
+  Motivo: ok
+- Teste 2: FALHOU
+  Obs: Contagem de vogais em 'Python' (o, o) — deve retornar 2.
+  Entrada:
+    Python
+  Saída esperada:
+    2
+  Saída obtida:
+    1
+  Motivo: saída diferente
+- Teste 3: FALHOU
+  Obs: Contagem de vogais em 'Casa' (a) — deve retornar 1.
+  Entrada:
+    Casa
+  Saída esperada:
+    1
+  Saída obtida:
+    2
+  Motivo: saída diferente
+- Teste 4: FALHOU
+  Obs: Contagem de vogais em 'Programação' (o, a, a) — deve retornar 3.
+  Entrada:
+    Programação
+  Saída esperada:
+    3
+  Saída obtida:
+    4
+  Motivo: saída diferente
+- Teste 5: PASSOU
+  Obs: Sem vogais em '12345' — deve retornar 0.
+  Entrada:
+    12345
+  Saída esperada:
+    0
+  Saída obtida:
+    0
+  Motivo: ok
+- Teste 6: FALHOU
+  Obs: Contagem de vogais em 'AEIOU' — deve retornar 5.
+  Entrada:
+    AEIOU
+  Saída esperada:
+    5
+  Saída obtida:
+    0
+  Motivo: saída diferente
+
+========================================================================

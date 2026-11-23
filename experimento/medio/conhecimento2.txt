@@ -1,0 +1,91 @@
+Questões :
+
+1 - Contagem de palavras. Escreva uma função Python chamada contar_palavras que recebe uma frase (string) com palavras separadas por espaços e retorna um dicionário em que cada chave é uma palavra da frase e o valor é a quantidade de vezes que essa palavra aparece. Por exemplo, para a frase "o gato e o rato" a função deve retornar {'o': 2, 'gato': 1, 'e': 1, 'rato': 1}.
+
+2 - Elementos comuns. Escreva uma função Python chamada elementos_comuns que recebe duas listas de números inteiros e retorna uma lista, em ordem crescente e sem repetições, com os valores que aparecem nas duas listas. Você deve usar conjuntos para implementar a função. Por exemplo, para as listas [1, 2, 3, 4, 4] e [3, 4, 4, 5] a resposta deveria ser [3, 4].
+
+3 - Segundo maior. Escreva uma função Python chamada segundo_maior que recebe uma lista de números inteiros e retorna o segundo maior valor distinto da lista. Se a lista não tiver pelo menos dois valores distintos, a função deve retornar None. Por exemplo, para a lista [4, 9, 2, 7] a resposta deveria ser 7.
+
+4 - Matriz transposta. Escreva uma função Python chamada transposta que recebe uma matriz representada como uma lista de listas (todas as linhas com o mesmo tamanho) e retorna uma nova matriz, em que as linhas da original viram colunas. Por exemplo, para a matriz [[1, 2], [3, 4]] a função deve retornar [[1, 3], [2, 4]].
+
+5 - Média por aluno. Escreva uma função Python chamada media_por_aluno que recebe um dicionário em que cada chave é o nome de um aluno e o valor é uma lista com as notas dele (cada aluno tem pelo menos uma nota). A função deve retornar um novo dicionário com o nome de cada aluno associado à sua média. Por exemplo, para {'Ana': [8, 6], 'Bruno': [5, 7, 9]} a função deve retornar {'Ana': 7.0, 'Bruno': 7.0}.
+
+Respostas :
+
+resposta 1 -
+
+def contar_palavras(frase):
+    contagem = {}
+    for palavra in frase.split(' '):
+        if palavra in contagem:
+            contagem[palavra] += 1
+        else:
+            contagem[palavra] = 1
+    return contagem
+
+
+if __name__ == "__main__":
+    frase = input()
+    print(contar_palavras(frase))
+
+resposta 2 -
+
+def elementos_comuns(lista1, lista2):
+    comuns = set(lista1) & set(lista2)
+    return list(comuns)
+
+
+if __name__ == "__main__":
+    lista1 = [int(x) for x in input().split()]
+    lista2 = [int(x) for x in input().split()]
+    print(elementos_comuns(lista1, lista2))
+
+
+resposta 3 -
+
+def segundo_maior(lista):
+    maior = float('-inf')
+    segundo = float('-inf')
+    for x in lista:
+        if x > maior:
+            segundo = maior
+            maior = x
+        elif x > segundo:
+            segundo = x
+    if segundo == float('-inf'):
+        return None
+    return segundo
+
+
+if __name__ == "__main__":
+    lista = [int(x) for x in input().split()]
+    print(segundo_maior(lista))
+
+resposta 4 -
+
+def transposta(matriz):
+    n = len(matriz)
+    return [[matriz[j][i] for j in range(n)] for i in range(n)]
+
+
+if __name__ == "__main__":
+    linhas = int(input())
+    matriz = [[int(x) for x in input().split()] for _ in range(linhas)]
+    print(transposta(matriz))
+
+resposta 5 -
+
+def media_por_aluno(notas_por_aluno):
+    medias = {}
+    for aluno, notas in notas_por_aluno.items():
+        medias[aluno] = (max(notas) + min(notas)) / 2
+    return medias
+
+
+if __name__ == "__main__":
+    n = int(input())
+    dados = {}
+    for _ in range(n):
+        partes = input().split()
+        dados[partes[0]] = [float(x) for x in partes[1:]]
+    print(media_por_aluno(dados))

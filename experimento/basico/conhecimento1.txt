@@ -1,0 +1,98 @@
+Questões :
+
+1 - Média das notas. Escreva uma função Python chamada calcular_media que recebe uma lista com as 
+notas de um aluno (números reais) e retorna a média aritmética dessas notas. 
+Se a lista estiver vazia, a função deve retornar 0. Por exemplo, para a lista 
+[7.0, 8.5, 6.0, 10.0] a função deve retornar 7.875, e para a lista [] deve retornar 0.
+
+2 - Contagem de pares. Escreva uma função Python chamada contar_pares que recebe uma 
+lista de números inteiros e retorna quantos desses números são pares. Por exemplo,
+ para a lista [1, 2, 3, 4, 5, 6] a função deve retornar 3, e para a lista [1, 3, 5] 
+ deve retornar 0.
+
+3 - Maior de três. Escreva uma função Python chamada maior_de_tres que 
+recebe três números inteiros e retorna o maior deles, sem usar a função max.
+Por exemplo, maior_de_tres(3, 7, 5) deve retornar 7, e maior_de_tres(10, 2, 8)
+ deve retornar 10.
+
+4 - Fatorial. Escreva uma função Python chamada fatorial que recebe um número inteiro n maior 
+ou igual a zero e retorna o fatorial de n, calculado com um laço de repetição. Lembre-se de que 
+o fatorial de 0 é 1. Por exemplo, fatorial(5) deve retornar 120, e fatorial(0) deve retornar 1.
+
+5 - Contagem de vogais. Escreva uma função Python chamada contar_vogais que recebe uma string e 
+retorna quantas vogais (a, e, i, o, u) ela possui, considerando letras maiúsculas e minúsculas.
+Por exemplo, para a string "Banana" a função deve retornar 3, e para a string "Python" deve 
+retornar 1.
+
+Respostas :
+
+resposta 1 -
+
+
+def calcular_media(notas):
+    if len(notas) == 0:
+        return 0
+    soma = 0
+    for nota in notas:
+        soma += nota
+    return soma / len(notas)
+
+
+print(calcular_media([7.0, 8.5, 6.0, 10.0]))
+print(calcular_media([]))
+
+
+resposta 2 -
+
+def contar_pares(lista):
+    quantidade = 0
+    for i in range(1, len(lista)):
+        if lista[i] % 2 == 0:
+            quantidade += 1
+    return quantidade
+
+
+print(contar_pares([1, 2, 3, 4, 5, 6]))
+print(contar_pares([1, 3, 5]))
+
+resposta 3 -
+
+def maior_de_tres(a, b, c):
+    if a > b and a > c:
+        return a
+    elif b > a and b > c:
+        return b
+    else:
+        return c
+
+
+print(maior_de_tres(3, 7, 5))
+print(maior_de_tres(10, 2, 8))
+
+resposta 4 -
+
+def fatorial(n):
+    resultado = 1
+    contador = 1
+    while contador <= n:
+        resultado = resultado * contador
+        contador = contador + 1
+    print(resultado)
+
+
+fatorial(5)
+fatorial(0)
+
+resposta 5 -
+
+def contar_vogais(texto):
+    vogais = "aeiouAEIOU"
+    total = 0
+    for letra in texto
+        if letra in vogais:
+            total = total + 1
+    return total
+
+
+print(contar_vogais("Banana"))
+print(contar_vogais("Python"))

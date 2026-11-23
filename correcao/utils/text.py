@@ -108,6 +108,21 @@ def saida_contem_esperado(saida_obtida: str, saida_esperada: str) -> bool:
     return False
 
 
+def saidas_equivalentes_ignorando_formato(obtida: str, esperada: str) -> bool:
+    """
+    Compara apenas os VALORES das saídas, ignorando parênteses, colchetes,
+    chaves, vírgulas, aspas e espaços. Ex.: "(7, 4)" == "7 4".
+
+    Exige os mesmos valores na mesma ordem; só a formatação é tolerada.
+    """
+    def tokens(s: str) -> List[str]:
+        limpo = re.sub(r"[()\[\]{},'\"]", " ", normalizar_texto(s).lower())
+        return limpo.split()
+
+    t_esp = tokens(esperada)
+    return bool(t_esp) and tokens(obtida) == t_esp
+
+
 def extrair_codigo(texto: str) -> str:
     """
     Extrai código entre cercas markdown.

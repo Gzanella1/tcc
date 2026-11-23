@@ -29,6 +29,10 @@ LIMIAR_APROX = 0.90
 # ─── Testes ──────────────────────────────────────────────────────────────────
 TESTES_ALVO = 6
 
+# Quantas soluções de referência independentes o oráculo de MODIFICAÇÃO gera
+# para obter a saída esperada por execução (0 desliga o oráculo).
+ORACULO_REFERENCIAS = int(os.getenv("ORACULO_REFERENCIAS", "2"))
+
 # ─── Execução de código ──────────────────────────────────────────────────────
 EXEC_BACKEND = os.getenv("EXEC_BACKEND", "container")
 CONTAINER_RUNTIME = os.getenv("CONTAINER_RUNTIME", "auto")

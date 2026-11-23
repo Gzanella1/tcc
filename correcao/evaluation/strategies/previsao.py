@@ -170,8 +170,8 @@ def _avaliar_com_pares(
         testes_exec.append({
             "teste":          i,
             "entrada":        entrada_val,
-            "saida_esperada": saida_prev_n,    # o que o aluno previu
-            "saida_obtida":   saida_real,      # o que o código realmente produz (gabarito)
+            "saida_esperada": saida_real,      # o que o código realmente produz (gabarito)
+            "resposta_aluno": saida_prev_n,    # o que o aluno previu
             "ok":             ok,
             "motivo":         motivo,
             "erro_execucao":  execucao["erro_execucao"],
@@ -259,8 +259,8 @@ def _avaliar_modo_legado(q: Questao, codigo_base: str) -> Resultado:
         testes_executados=[{
             "teste":          1,
             "entrada":        entrada,
-            "saida_esperada": saida_correta,
-            "saida_obtida":   execucao["stdout"],
+            "saida_esperada": saida_correta,   # o que o código-base imprime (gabarito)
+            "resposta_aluno": resposta,        # o que foi de fato comparado com o gabarito
             "ok":             ok,
             "motivo":         "ok" if ok else "saída diferente",
             "erro_execucao":  execucao["erro_execucao"],

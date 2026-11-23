@@ -264,5 +264,86 @@ def caminho_saida_tmp():
     return str(Path(tempfile.gettempdir()) / "tcc_previsao_dados_entrada_teste_saida.txt")
 
 
+CODIGO_SEGUNDO_MAIOR = (
+    "def segundo_maior(lista):\n"
+    "    maior = float('-inf')\n"
+    "    segundo = float('-inf')\n"
+    "    for x in lista:\n"
+    "        if x > maior:\n"
+    "            segundo = maior\n"
+    "            maior = x\n"
+    "        elif x > segundo:\n"
+    "            segundo = x\n"
+    "    if segundo == float('-inf'):\n"
+    "        return None\n"
+    "    return segundo\n"
+    "\n"
+    "if __name__ == '__main__':\n"
+    "    lista = [int(x) for x in input().split()]\n"
+    "    print(segundo_maior(lista))\n"
+)
+
+
+class ConsumoIntegralStdinTests(unittest.TestCase):
+    """Formato da entrada deve casar com a forma como o código lê o stdin."""
+
+    def test_lista_lida_em_uma_linha_usa_formato_compacto(self):
+        # Regressão: "4\n9\n2\n7\n" fazia input().split() ler só "4"
+        # e a saída de referência virava "None".
+        ok, motivo, entrada, saida = gerar_entrada_testes(
+            [4, 9, 2, 7], CODIGO_SEGUNDO_MAIOR
+        )
+        self.assertTrue(ok, motivo)
+        self.assertEqual(entrada, "4 9 2 7\n")
+        self.assertEqual(saida.strip(), "7")
+
+    def test_separador_do_split_no_codigo_tem_prioridade(self):
+        codigo = "itens = input().split(',')\nprint(len(itens), itens[-1])\n"
+        ok, motivo, entrada, saida = gerar_entrada_testes(["a", "b", "c"], codigo)
+        self.assertTrue(ok, motivo)
+        self.assertEqual(entrada, "a,b,c\n")
+        self.assertEqual(saida.strip(), "3 c")
+
+    def test_lista_dentro_de_dict_e_compactada_so_quando_necessario(self):
+        codigo = (
+            "n = int(input())\n"
+            "v = [int(x) for x in input().split()]\n"
+            "print(sum(v[:n]))\n"
+        )
+        ok, motivo, entrada, _ = gerar_entrada_testes(
+            {"n": 2, "valores": [5, 6, 7]}, codigo
+        )
+        self.assertTrue(ok, motivo)
+        self.assertEqual(entrada, "2\n5 6 7\n")
+
+    def test_formato_padrao_valido_permanece_inalterado(self):
+        # Código que lê um item por linha: nada muda em relação ao padrão.
+        codigo = "v = [int(input()) for _ in range(4)]\nprint(max(v))\n"
+        ok, motivo, entrada, _ = gerar_entrada_testes([4, 9, 2, 7], codigo)
+        self.assertTrue(ok, motivo)
+        self.assertEqual(entrada, "4\n9\n2\n7\n")
+
+    def test_sentinela_em_branco_restante_nao_conta_como_sobra(self):
+        codigo = "print(input())\n"
+        ok, motivo, entrada, _ = gerar_entrada_testes({"x": "oi", "y": ""}, codigo)
+        self.assertTrue(ok, motivo)
+        self.assertEqual(entrada, "oi\n\n")
+
+    def test_entrada_com_sobra_sem_alternativa_valida_e_rejeitada(self):
+        # Código lê só 1 valor escalar; dados têm 2 escalares → sobra.
+        codigo = "print(int(input()) * 2)\n"
+        ok, motivo, entrada, _ = gerar_entrada_testes({"a": 3, "b": 4}, codigo)
+        self.assertFalse(ok)
+        self.assertEqual(entrada, "")
+        self.assertIn("não foi totalmente lida", motivo)
+
+    def test_sys_exit_zero_ainda_verifica_sobra(self):
+        codigo = "import sys\nprint(input())\nsys.exit(0)\n"
+        ok, _motivo, entrada, _ = gerar_entrada_testes(["a", "b"], codigo)
+        # Padrão "a\nb\n" sobra "b"; variante "a b\n" é lida inteira.
+        self.assertTrue(ok)
+        self.assertEqual(entrada, "a b\n")
+
+
 if __name__ == "__main__":
     unittest.main()

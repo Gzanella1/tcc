@@ -147,6 +147,10 @@ class QuestionBuilder:
             "Gere 1 pergunta do tipo MODIFICAÇÃO que proponha uma alteração "
             "concreta no código (ex.: nova funcionalidade, refatoração, otimização) "
             "e peça ao aluno para pensar como faria essa mudança.\n\n"
+            "IMPORTANTE: descreva a alteração APENAS em palavras. NÃO inclua "
+            "exemplos com valores de entrada e o resultado esperado calculado "
+            "(ex.: 'para [4, 9, 2, 7] deve retornar ...'), pois esses exemplos "
+            "podem conter erros de cálculo.\n\n"
             + self._cabecalho(exercicio)
             + self._rodape("modificacao")
         )

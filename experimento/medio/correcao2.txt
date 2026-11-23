@@ -1,0 +1,193 @@
+CORREÇÃO AUTOMÁTICA
+Data: 09/11/2026 14:36:24
+Total de questões: 5
+Média geral: 3.40/10
+Questões com nota >= 7.0: 2
+========================================================================
+
+EXERCÍCIO 1
+Tipo: modificacao
+Nota: 7.00/10
+Status: parcial
+Feedback: O código apenas normaliza o primeiro caractere, não converte toda a palavra para minúsculo, o que não atende ao requisito de considerar palavras em maiúsculo ou minúsculo como iguais.
+
+Enunciado:
+Agora, modifique a função para que também considere palavras que estão em maiúsculo ou minúsculo como iguais (ou seja, transforme todas as palavras em minúsculas antes de contar).
+
+Detalhes:
+- Teste 1: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 2: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 3: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 4: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 5: PASSOU (similaridade=1.000, motivo=ok)
+- Teste 6: PASSOU (similaridade=1.000, motivo=ok)
+- Faltantes: O código não transforma todas as palavras em minúsculas; apenas o primeiro caractere é minúsculo (ex.: 'O' → 'o', mas 'Ou' → 'ou', 'Ola' → 'ola') — o restante da palavra não é convertido para minúsculo, o que não atende ao requisito de considerar maiúsculo/minúsculo como igual.
+- Nota composta: 70% execução de testes + 30% avaliação via LLM.
+
+Evidências:
+- [execucao | peso 0.7] 6/6 casos de teste compatíveis passaram de 6 válidos (6 total, 0 incompatíveis).
+    modo: com_testes
+    testes_total: 6
+    testes_validos: 6
+    testes_passaram: 6
+    testes_reprovados: 0
+    testes_incompativeis: 0
+    testes_por_origem: {'enunciado': 0, 'llm': 6}
+    referencia: testes_executados
+- [llm | peso 0.3] Verificação dos requisitos do enunciado via LLM (nota 0.00, status 'erro').
+    nota: 0.0
+    status: erro
+    requisitos_identificados: Transformar todas as palavras em minúsculas antes de contar
+    requisitos_atendidos: (vazia)
+    faltantes: O código não transforma todas as palavras em minúsculas; apenas o primeiro caractere é minúsculo (ex.: 'O' → 'o', mas 'Ou' → 'ou', 'Ola' → 'ola') — o restante da palavra não é convertido para minúsculo, o que não atende ao requisito de considerar maiúsculo/minúsculo como igual.
+
+Testes executados:
+- Teste 1: PASSOU
+  Obs: Teste com palavras em maiúsculo e minúsculo, transformadas em minúsculas. [gabarito obtido por execução; o LLM havia previsto "{'python': 2}", descartado]
+  Entrada:
+    Python é bom. Python é legal.
+  Saída esperada:
+    {'python': 2, 'é': 2, 'bom.': 1, 'legal.': 1}
+  Saída obtida:
+    {'python': 2, 'é': 2, 'bom.': 1, 'legal.': 1}
+  Motivo: ok
+- Teste 2: PASSOU
+  Obs: Teste com palavras começando em maiúsculo, transformadas em minúsculas. [gabarito obtido por execução; o LLM havia previsto "{'o dia': 2}", descartado]
+  Entrada:
+    O dia é bonito. O dia é chuvoso.
+  Saída esperada:
+    {'o': 2, 'dia': 2, 'é': 2, 'bonito.': 1, 'chuvoso.': 1}
+  Saída obtida:
+    {'o': 2, 'dia': 2, 'é': 2, 'bonito.': 1, 'chuvoso.': 1}
+  Motivo: ok
+- Teste 3: PASSOU
+  Obs: Teste com todas as palavras em maiúsculo, transformadas em minúsculas.
+  Entrada:
+    A A A A A
+  Saída esperada:
+    {'a': 5}
+  Saída obtida:
+    {'a': 5}
+  Motivo: ok
+- Teste 4: PASSOU
+  Obs: Teste com repetição de palavras em minúsculo.
+  Entrada:
+    Python Python Python
+  Saída esperada:
+    {'python': 3}
+  Saída obtida:
+    {'python': 3}
+  Motivo: ok
+- Teste 5: PASSOU
+  Obs: Teste com palavras que contêm pontuação e maiúsculo no início, transformadas em minúsculo. [gabarito obtido por execução; o LLM havia previsto "{'ola mundo': 2}", descartado]
+  Entrada:
+    Ola Mundo! Ola Mundo!
+  Saída esperada:
+    {'ola': 2, 'mundo!': 2}
+  Saída obtida:
+    {'ola': 2, 'mundo!': 2}
+  Motivo: ok
+- Teste 6: PASSOU
+  Obs: Teste com palavras repetidas e sem maiúsculo no início. [gabarito obtido por execução; o LLM havia previsto "{'casa': 4}", descartado]
+  Entrada:
+    Casa, casa, casa, casa
+  Saída esperada:
+    {'casa,': 3, 'casa': 1}
+  Saída obtida:
+    {'casa,': 3, 'casa': 1}
+  Motivo: ok
+
+========================================================================
+
+EXERCÍCIO 2
+Tipo: descritiva
+Nota: 0.00/10
+Status: erro
+Feedback: A resposta contém uma afirmação técnica incorreta sobre a ordem dos elementos na lista resultante.
+
+Enunciado:
+Descreva, com suas próprias palavras, passo a passo, o que o código faz para encontrar os elementos comuns entre duas listas de números inteiros, utilizando conjuntos.
+
+Detalhes:
+- Melhorias: Corrigir a afirmação de que os elementos mantêm a ordem da lista1, pois a interseção de conjuntos não preserva a ordem.
+
+Evidências:
+- [llm] Avaliação via LLM (nota original 0.00).
+    nota_original: 0.0
+    status: erro
+    acertos: (vazia)
+    melhorias: Corrigir a afirmação de que os elementos mantêm a ordem da lista1, pois a interseção de conjuntos não preserva a ordem.
+    piso_aplicado: não
+
+========================================================================
+
+EXERCÍCIO 3
+Tipo: previsao
+Nota: 10.00/10
+Status: ok
+Feedback: Resposta correta.
+
+Enunciado:
+Dada a lista [4, 9, 2, 7], qual será o valor retornado pela função segundo_maior?
+
+Saída calculada:
+7
+
+Detalhes:
+- Saída correta calculada a partir do código-base.
+- Similaridade com a resposta do aluno: 1.000
+
+Evidências:
+- [execucao] Saída do código-base comparada diretamente com a resposta do aluno (similaridade=1.000).
+    modo: legado
+    similaridade: 1.0
+    referencia: testes_executados
+
+Testes executados:
+- Teste 1: PASSOU
+  Entrada:
+    4 9 2 7
+  Saída esperada:
+    7
+  Resposta do aluno:
+    7
+  Motivo: ok
+
+========================================================================
+
+EXERCÍCIO 4
+Tipo: correcao
+Nota: 0.00/10
+Status: erro
+Feedback: Resposta vazia.
+
+Enunciado:
+O código apresenta um erro real? Se sim, explique qual é e por que ele ocorre.
+Se não, justifique por que o código está correto.
+
+Detalhes:
+- Sem resposta para avaliar.
+
+========================================================================
+
+EXERCÍCIO 5
+Tipo: justificativa
+Nota: 0.00/10
+Status: erro
+Feedback: A resposta confunde a intenção do código com uma abordagem matemática correta. O código não calcula a média aritmética das notas, e a justificativa do aluno é tecnicamente incorreta.
+
+Enunciado:
+Por que a abordagem escolhida calcula a média como a média entre a nota máxima e a nota mínima, em vez de calcular a média aritmética das notas?
+
+Detalhes:
+- A resposta não demonstra com clareza o conceito pedido.
+
+Evidências:
+- [llm] Avaliação via LLM (nota original 0.00).
+    nota_original: 0.0
+    status: erro
+    acertos: (vazia)
+    melhorias: (vazia)
+    piso_aplicado: não
+
+========================================================================

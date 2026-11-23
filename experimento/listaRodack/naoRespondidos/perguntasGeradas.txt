@@ -1,0 +1,55 @@
+============================================================
+Exercício gerado com base na sua resposta da questão 1
+============================================================
+
+1 - [DESCRITIVA] Descreva, com suas próprias palavras, passo a passo, o que o programa faz ao ler números inteiros do usuário e como ele organiza esses números em ordem decrescente.
+
+Código-base:
+----------------------------------------
+[O ALUNO NÃO ESCREVEU CÓDIGO]
+----------------------------------------
+
+resposta 1 -
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 2
+============================================================
+
+2 - [MODIFICACAO] Adicione uma nova funcionalidade à função buscaReversa para que ela também retorne os valores associados às chaves encontradas, mantendo a ordem de busca reversa.
+
+Código-base:
+----------------------------------------
+[O ALUNO NÃO ESCREVEU CÓDIGO]
+----------------------------------------
+
+resposta 2 -
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 4
+============================================================
+
+3 - [CORRECAO] O aluno não enviou nenhum código para análise. Por favor, envie o código produzido para que possamos verificar se há um erro real.
+
+Código-base:
+----------------------------------------
+[O ALUNO NÃO ESCREVEU CÓDIGO]
+----------------------------------------
+
+resposta 3 -
+
+
+============================================================
+Exercício gerado com base na sua resposta da questão 5
+============================================================
+
+4 - [JUSTIFICATIVA] Por que você escolheu essa abordagem para ordenar os números em ordem crescente? Qual critério você considerou ao decidir por essa técnica?
+
+Código-base:
+----------------------------------------
+[O ALUNO NÃO ESCREVEU CÓDIGO]
+----------------------------------------
+
+resposta 4 -
+

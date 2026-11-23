@@ -103,6 +103,9 @@ def formatar_resultado(res: Resultado, q: Questao) -> str:
             if t.get("saida_esperada") is not None:
                 linhas.append("  Saída esperada:")
                 linhas.append(textwrap.indent(normalizar_texto(str(t["saida_esperada"])), "    "))
+            if t.get("resposta_aluno") is not None:
+                linhas.append("  Resposta do aluno:")
+                linhas.append(textwrap.indent(normalizar_texto(str(t["resposta_aluno"])) or "(vazia)", "    "))
             if t.get("saida_obtida") is not None:
                 linhas.append("  Saída obtida:")
                 linhas.append(textwrap.indent(normalizar_texto(str(t["saida_obtida"])), "    "))

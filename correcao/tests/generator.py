@@ -32,6 +32,7 @@ from config import TESTES_ALVO, USAR_LLM
 from llm.client import chamar_llm_json
 from models.questao import Questao
 from execution.runner import executar_codigo_python
+from tests.oraculo import aplicar_oraculo_modificacao
 from utils.text import (
     ERRO_EOF_INCOMPATIVEL,
     blocos_na_entrada,
@@ -696,6 +697,15 @@ def obter_testes(q: Questao) -> List[Dict[str, str]]:
                 )
             testes_corrigidos.append(teste_corrigido)
         testes = testes_corrigidos
+
+    # Oráculo por execução (MODIFICAÇÃO): a saída esperada dos testes gerados
+    # pelo LLM deixa de ser "prevista de cabeça" e passa a ser a saída
+    # observada executando soluções de referência. Testes explícitos do
+    # enunciado não são tocados.
+    if q.tipo == "modificacao" and gerados:
+        explicitos = [t for t in testes if t.get(_CHAVE_ORIGEM) != ORIGEM_LLM]
+        do_llm = [t for t in testes if t.get(_CHAVE_ORIGEM) == ORIGEM_LLM]
+        testes = explicitos + aplicar_oraculo_modificacao(q, do_llm)
 
     testes = validar_testes(testes, requer_input=usa_input)
     testes = deduplicar_testes(testes)
